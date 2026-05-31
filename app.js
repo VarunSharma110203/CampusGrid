@@ -2517,7 +2517,7 @@ function renderDashboard() {
     <article class="hero-panel">
       <p class="eyebrow">Today, ${formatDate(state.currentDate)}</p>
       <h2>Campus load: ${Math.round((booked/totalSlots)*100)}%</h2>
-      <p>${booked} slots booked across ${totalRooms} rooms in 8 blocks.</p>
+      <p>${booked} slots booked across ${totalRooms} rooms in ${state.buildings.length} blocks.</p>
       <button class="btn primary" data-screen="schedule" onclick="showScreen('schedule')">Open cockpit</button>
     </article>
     <article class="widget-card">
@@ -4186,6 +4186,7 @@ document.addEventListener("DOMContentLoaded", () => {
     modeOfflineBtn.classList.add("active");
     modeFirebaseBtn.classList.remove("active");
     updateFirebaseStatusIndicator();
+    populateAllBuildingDropdowns(); // Revert to offline buildings in filters if needed
     showToast("Switched to Offline Demo mode.");
   });
   
@@ -4257,6 +4258,9 @@ document.addEventListener("DOMContentLoaded", () => {
     showToast("Firebase Config reset to default. Reloading...");
     setTimeout(() => { window.location.reload(); }, 1500);
   });
+
+  // Run dynamic dropdown population initially
+  populateAllBuildingDropdowns();
 });
 
 // Override the Sign-In click listener
@@ -4298,6 +4302,9 @@ setTimeout(() => {
           // Activate dynamic syncing
           setupFirebaseListeners();
           
+          // Re-populate all dropdown filters after database state loads
+          populateAllBuildingDropdowns();
+          
           // Log in and set role
           document.body.classList.remove('show-login');
           updateDateDisplay();
@@ -4328,6 +4335,29 @@ setTimeout(() => {
     }
   });
 }, 500);
+
+// Dynamic Select Options Populator (Removes hardcoding from UI filters)
+function populateAllBuildingDropdowns() {
+  const buildingFilter = document.getElementById("buildingFilter");
+  if (buildingFilter) {
+    const curVal = buildingFilter.value;
+    let html = `<option value="All buildings">All buildings</option>`;
+    state.buildings.forEach(b => {
+      html += `<option value="${b.code}" ${b.code === curVal ? 'selected' : ''}>Block ${b.code} - ${b.name}</option>`;
+    });
+    buildingFilter.innerHTML = html;
+  }
+  
+  const bulkBuildingFilter = document.getElementById("bulkBuildingFilter");
+  if (bulkBuildingFilter) {
+    const curVal = bulkBuildingFilter.value;
+    let html = `<option value="All buildings">All buildings</option>`;
+    state.buildings.forEach(b => {
+      html += `<option value="${b.code}" ${b.code === curVal ? 'selected' : ''}>Block ${b.code}: ${b.name}</option>`;
+    });
+    bulkBuildingFilter.innerHTML = html;
+  }
+}
 
 // 3. Sync helpers
 function saveState(dataType, key = null) {
@@ -4372,6 +4402,8 @@ function saveState(dataType, key = null) {
         }
       } else if (dataType === 'calendarConfig') {
         fbDb.collection('config').doc('calendar').set(state.calendarConfig);
+      } else if (dataType === 'buildings') {
+        fbDb.collection('config').doc('buildings').set({ list: state.buildings });
       } else if (dataType === 'mockSlotGroups') {
         if (key) {
           const group = mockSlotGroups.find(g => g.id === key);
@@ -4441,6 +4473,12 @@ async function firebaseLoad() {
     if (loadedMaster.length > 0) {
       mockSlotGroups.length = 0;
       loadedMaster.forEach(item => mockSlotGroups.push(item));
+    }
+
+    // 7. Buildings (Infrastructure)
+    const bldDoc = await fbDb.collection('config').doc('buildings').get();
+    if (bldDoc.exists) {
+      state.buildings = bldDoc.data().list || [];
     }
     
     console.log("State successfully loaded from Firestore.");
@@ -4536,6 +4574,19 @@ function setupFirebaseListeners() {
     isSyncingFromFirebase = false;
     if (changed) refreshActiveViews();
   });
+
+  // Buildings config listener
+  fbDb.collection('config').doc('buildings').onSnapshot(doc => {
+    if (isSyncingFromFirebase) return;
+    if (doc.exists) {
+      isSyncingFromFirebase = true;
+      state.buildings = doc.data().list || [];
+      isSyncingFromFirebase = false;
+      populateInfraBuildingSelect();
+      populateAllBuildingDropdowns();
+      refreshActiveViews();
+    }
+  });
 }
 
 function refreshActiveViews() {
@@ -4560,6 +4611,7 @@ async function seedFirestoreIfEmpty() {
       console.log("Firestore is empty. Seeding initial mock data...");
       
       await fbDb.collection('config').doc('calendar').set(state.calendarConfig);
+      await fbDb.collection('config').doc('buildings').set({ list: state.buildings });
       
       for (const date in state.cellData) {
         await fbDb.collection('schedules').doc(date).set(state.cellData[date]);
@@ -4614,10 +4666,12 @@ renderRequestsScreen = function(...args) {
 };
 
 const originalRenderFacilitiesScreen = renderFacilitiesScreen;
-renderFacilitiesScreen = function(...args) {
-  if (originalRenderFacilitiesScreen) originalRenderFacilitiesScreen.apply(this, args);
-  saveState('issues');
-};
+if (originalRenderFacilitiesScreen) {
+  renderFacilitiesScreen = function(...args) {
+    originalRenderFacilitiesScreen.apply(this, args);
+    saveState('issues');
+  };
+}
 
 const originalRenderSettingsScreen = renderSettingsScreen;
 renderSettingsScreen = function(...args) {
@@ -4630,3 +4684,23 @@ renderMasterScheduling = function(...args) {
   if (originalRenderMasterScheduling) originalRenderMasterScheduling.apply(this, args);
   saveState('mockSlotGroups');
 };
+
+// Monkey-patches for Dynamic Infrastructure (Buildings & Rooms)
+const originalRenderBuildingsList = renderBuildingsList;
+renderBuildingsList = function(...args) {
+  if (originalRenderBuildingsList) originalRenderBuildingsList.apply(this, args);
+  saveState('buildings');
+};
+
+const originalRenderInfraRooms = renderInfraRooms;
+renderInfraRooms = function(...args) {
+  if (originalRenderInfraRooms) originalRenderInfraRooms.apply(this, args);
+  saveState('buildings');
+};
+
+const originalPopulateInfraBuildingSelect = populateInfraBuildingSelect;
+populateInfraBuildingSelect = function(...args) {
+  if (originalPopulateInfraBuildingSelect) originalPopulateInfraBuildingSelect.apply(this, args);
+  populateAllBuildingDropdowns();
+};
+
