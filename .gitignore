@@ -1,0 +1,14 @@
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Firebase credentials (CRITICAL)
+serviceAccountKey.json
+
+# Local env configs / system files
+.DS_Store
+server.pid
+.gemini/
+*.local

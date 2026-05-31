@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CampusGrid - Lecture Hall Operations</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="role-admin show-login">
+    <section class="login-screen" id="loginScreen">
+      <div class="login-visual">
+        <div class="login-brand">
+          <div class="brand-mark">CG</div>
+          <div>
+            <span>UNIVERSITY OF BHARAT</span>
+            <strong>Class & Hall operations</strong>
+          </div>
+        </div>
+        <div class="login-copy">
+          <p class="eyebrow">Mission control for scheduling</p>
+          <h1>One grid.<br />Every room.<br />Every slot.</h1>
+          <p>Replace sheets for 8 buildings, 200 teaching spaces, 15,000 students, and 500 faculty with live room visibility, request approvals, swaps, and daily operations.</p>
+        </div>
+        <span class="login-footnote">v1.0 · Indian Standard Time</span>
+      </div>
+      <div class="login-panel">
+        <div>
+          <p class="eyebrow">Sign in</p>
+          <h2>Welcome back</h2>
+          <p class="helper">Pick a role below to open the right workspace.</p>
+        </div>
+        <!-- Mode Selector -->
+        <div style="margin: 16px 0; background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <span class="eyebrow" style="font-size: 9.5px; letter-spacing: 0.5px; color: var(--text-muted);">Application Mode</span>
+          <div class="segmented" style="display: flex; gap: 4px; width: 100%;">
+            <button type="button" class="active" id="modeOfflineBtn" style="flex: 1; padding: 6px; font-size: 11px; font-weight: 600;">Offline Demo</button>
+            <button type="button" id="modeFirebaseBtn" style="flex: 1; padding: 6px; font-size: 11px; font-weight: 600;">Firebase Live</button>
+          </div>
+          <div style="font-size: 10.5px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #94a3b8;" id="firebaseIndicator"></span>
+            <span id="firebaseStatusText">Firebase not configured (offline fallback).</span>
+          </div>
+        </div>
+        <div class="login-role-grid">
+          <button class="login-role active" data-login-role="admin"><span>Admin</span><strong>Timetabling cockpit</strong></button>
+          <button class="login-role" data-login-role="faculty"><span>Faculty</span><strong>Teaching & requests</strong></button>
+          <button class="login-role" data-login-role="facilities"><span>Facilities</span><strong>Issues & maintenance</strong></button>
+          <button class="login-role" data-login-role="student"><span>Student</span><strong>Today’s schedule</strong></button>
+        </div>
+        <label class="field"><span>Email</span><input id="loginEmail" value="admin@univ.edu" /></label>
+        <label class="field"><span>Password</span><input type="password" id="loginPassword" value="admin123" /></label>
+        <button class="btn primary login-submit" id="loginSubmit">Sign in</button>
+        <p class="helper">Demo accounts auto-fill when you choose a role.</p>
+      </div>
+    </section>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path></svg>
+          </div>
+          <div>
+            <strong>UNIVERSITY</strong>
+            <span>Scheduling</span>
+          </div>
+        </div>
+        <nav class="nav-list" id="primaryNav" aria-label="Primary">
+          <button class="nav-item" data-screen="dashboard">Dashboard</button>
+          <button class="nav-item" data-screen="faculty">My Classes</button>
+          <button class="nav-item" data-screen="facilities">Issue Queue</button>
+          <button class="nav-item" data-screen="student">My Schedule</button>
+          <button class="nav-item" data-screen="calendar">University Calendar</button>
+          <button class="nav-item active" data-screen="schedule">Schedule Cockpit</button>
+          <button class="nav-item" data-screen="rooms">Rooms</button>
+          <button class="nav-item" data-screen="requests">Requests & Approvals</button>
+          <button class="nav-item" data-screen="exams">Exams · Bulk Block</button>
+          <button class="nav-item" data-screen="issues">Issues · Maintenance</button>
+          <button class="nav-item" data-screen="notifications">Announcements</button>
+          <button class="nav-item" data-screen="directory">My University</button>
+          <button class="nav-item" data-screen="master-schedule">Master Scheduling</button>
+          <button class="nav-item" data-screen="settings">Settings & Infrastructure</button>
+        </nav>
+        <div class="role-profile" id="roleProfile"></div>
+        <div class="role-switcher">
+          <span>Switch role</span>
+          <button data-role-target="admin" class="chip active">Admin</button>
+          <button data-role-target="faculty" class="chip">Faculty</button>
+          <button data-role-target="facilities" class="chip">Facilities</button>
+          <button data-role-target="student" class="chip">Student</button>
+        </div>
+        <button id="startTourBtn" onclick="startTour()" style="margin: 12px 16px 16px; width: calc(100% - 32px); background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; border-radius: 8px; padding: 10px 14px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;">
+          <span style="font-size:16px;">▶</span> Take the Tour
+        </button>
+      </aside>
+
+      <!-- Product Tour Overlay -->
+      <div id="tourOverlay" style="display:none; position:fixed; inset:0; z-index:9000; pointer-events:none;">
+        <div id="tourBackdrop" style="position:absolute; inset:0; background: rgba(0,0,0,0.55); backdrop-filter: blur(1px);"></div>
+        <div id="tourSpotlight" style="position:absolute; border-radius:10px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), 0 0 0 3px #6366f1, 0 0 0 6px rgba(99,102,241,0.3); transition: all 0.35s cubic-bezier(0.4,0,0.2,1); pointer-events:none;"></div>
+        <div id="tourCard" style="position:absolute; width:320px; background:white; border-radius:14px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); padding:24px; pointer-events:all; transition: all 0.35s cubic-bezier(0.4,0,0.2,1);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span id="tourStepBadge" style="font-size:11px; font-weight:700; color:#6366f1; background:#ede9fe; padding:3px 10px; border-radius:20px; letter-spacing:0.5px;">STEP 1 / 8</span>
+            <button onclick="endTour()" style="background:none; border:none; font-size:18px; color:#94a3b8; cursor:pointer; line-height:1; padding:0;">✕</button>
+          </div>
+          <h3 id="tourTitle" style="font-size:16px; font-weight:700; margin-bottom:8px; color:#0f172a;"></h3>
+          <p id="tourDesc" style="font-size:13.5px; color:#475569; line-height:1.6; margin:0 0 20px;"></p>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <button id="tourPrev" onclick="tourPrev()" style="background:none; border:1px solid #e2e8f0; border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer; font-family:inherit; color:#475569;">← Prev</button>
+            <div id="tourDots" style="display:flex; gap:5px;"></div>
+            <button id="tourNext" onclick="tourNext()" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color:white; border:none; border-radius:8px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;">Next →</button>
+          </div>
+        </div>
+      </div>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="topbar-title-section">
+            <p class="eyebrow" id="pageSubtitle">SCHEDULE COCKPIT</p>
+            <h1 id="pageTitle">Tuesday, 26 May 2026</h1>
+          </div>
+          <div class="topbar-actions admin-context">
+            <div class="date-navigator">
+              <button class="btn-date-nav" id="prevDateBtn" aria-label="Previous Day">&lt;</button>
+              <div class="date-picker-wrapper">
+                <input id="dateInput" type="date" value="2026-05-26" />
+                <span id="dateDisplay">26/05/2026</span>
+              </div>
+              <button class="btn-date-nav" id="nextDateBtn" aria-label="Next Day">&gt;</button>
+            </div>
+            <button class="btn" id="todayBtn">Today</button>
+            <div class="search-wrapper">
+              <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input id="searchInput" placeholder="Search room / course / faculty..." />
+            </div>
+            <div class="bell-container">
+              <button class="bell-btn" id="bellBtn" aria-label="Notifications">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                <span class="bell-badge" id="bellBadge">2</span>
+              </button>
+              <div class="bell-dropdown hidden" id="bellDropdown">
+                <div class="bell-dropdown-header">
+                  <strong>Notifications</strong>
+                  <button class="btn sm ghost" id="clearNotificationsBtn">Clear all</button>
+                </div>
+                <div class="bell-dropdown-list" id="bellNotificationsList">
+                  <!-- Dynamic Notifications -->
+                </div>
+              </div>
+            </div>
+            <button class="btn" id="printBtn">Print</button>
+          </div>
+          <div class="topbar-actions role-context hidden" id="roleContext"></div>
+        </header>
+
+        <section id="dashboard" class="screen hidden">
+          <div class="dashboard-grid">
+            <article class="hero-panel" style="background: linear-gradient(135deg, var(--ink) 0%, #1e293b 100%); color: white;">
+              <p class="eyebrow" style="color: #94a3b8;">Today, 26 May</p>
+              <h2 style="color: white; font-size: 28px; margin-bottom: 8px;">Campus is at 82% Utilization</h2>
+              <p style="color: #cbd5e1; font-size: 14px; margin-bottom: 24px;">2 conflicts require admin action. Lab Block has restricted capacity.</p>
+              <button class="btn" data-screen="schedule" style="background: white; color: var(--ink); border: none;">Open Cockpit</button>
+            </article>
+            <article class="metric-card"><span>Total Bookings</span><strong>145</strong><small>Across 8 buildings</small></article>
+            <article class="metric-card"><span>Active Faculty</span><strong>128</strong><small>3 pending requests</small></article>
+            <article class="metric-card"><span>Daily Footfall</span><strong>12,400</strong><small>Students on campus today</small></article>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;">
+            <div class="dashboard-panel" style="background: white; border-radius: var(--radius); padding: 24px; border: 1px solid var(--line); box-shadow: var(--shadow);">
+              <h3 style="font-size: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 12px;">Needs Attention</h3>
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div class="issue-card" style="border: 1px solid var(--blocked-border); background: var(--blocked-bg); padding: 12px; border-radius: var(--radius);">
+                  <div style="display: flex; justify-content: space-between;">
+                    <strong style="color: var(--blocked);">Room Conflict: C-201</strong>
+                    <span class="poi-status" style="background: var(--blocked); color: white;">Slot 2</span>
+                  </div>
+                  <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Double booked: CS101 and ME301</p>
+                  <button class="btn sm" style="margin-top: 8px; width: 100%;" onclick="showScreen('schedule')">Resolve</button>
+                </div>
+                <div class="issue-card" style="border: 1px solid var(--pending-border); background: var(--pending-bg); padding: 12px; border-radius: var(--radius);">
+                  <div style="display: flex; justify-content: space-between;">
+                    <strong style="color: var(--pending);">Faculty Request</strong>
+                  </div>
+                  <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Dr. Mehta requested a projector room swap.</p>
+                  <button class="btn sm" style="margin-top: 8px; width: 100%;" onclick="showScreen('requests')">Review</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="dashboard-panel" style="background: white; border-radius: var(--radius); padding: 24px; border: 1px solid var(--line); box-shadow: var(--shadow);">
+              <h3 style="font-size: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 12px;">Recent Activity</h3>
+              <div class="activity-timeline" style="display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 16px; border-left: 2px solid var(--line);">
+                <div style="position: relative;">
+                  <div style="position: absolute; left: -21px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--vacant);"></div>
+                  <p style="font-size: 14px; font-weight: 500;">Master Matrix Published</p>
+                  <span style="font-size: 12px; color: var(--text-muted);">Admin • 10 mins ago</span>
+                </div>
+                <div style="position: relative;">
+                  <div style="position: absolute; left: -21px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--booked);"></div>
+                  <p style="font-size: 14px; font-weight: 500;">CS201 added to A-101</p>
+                  <span style="font-size: 12px; color: var(--text-muted);">Admin • 45 mins ago</span>
+                </div>
+                <div style="position: relative;">
+                  <div style="position: absolute; left: -21px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted);"></div>
+                  <p style="font-size: 14px; font-weight: 500;">Automated SIS Sync Completed</p>
+                  <span style="font-size: 12px; color: var(--text-muted);">System • 6:00 AM</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="schedule" class="screen">
+          <div class="cockpit-alerts-bar">
+            <span class="alerts-label">CONFLICTS & ALERTS</span>
+            <div class="alerts-pills">
+              <button class="alert-pill danger" id="conflictAlertBtn">0 conflicts</button>
+              <button class="alert-pill warning" id="labAlertBtn">1 lab room blocked</button>
+              <button class="alert-pill warning hidden" id="unassignedAlert">0 classes unassigned</button>
+              <button class="alert-pill info" id="pendingAlertBtn">2 pending requests</button>
+            </div>
+            <button class="btn sm" id="reviewAlertsBtn" onclick="showScreen('requests')" style="background: transparent; border-color: var(--line-strong); padding: 4px 10px;">Review &rarr;</button>
+          </div>
+
+          <div class="cockpit-filters-bar">
+            <div class="filters-group">
+              <span class="filters-label">FILTERS</span>
+              <div class="filter-select-wrapper">
+                <select id="buildingFilter">
+                  <option value="All buildings">All buildings</option>
+                  <option value="A">Block A - Main Academic Block</option>
+                  <option value="B">Block B - Seminar Block</option>
+                  <option value="C">Block C - Lecture Block</option>
+                  <option value="D">Block D - Lab Block</option>
+                  <option value="E">Block E - Management Block</option>
+                  <option value="F">Block F - Auditorium Block</option>
+                  <option value="G">Block G - Humanities Block</option>
+                  <option value="H">Block H - Admin & Services</option>
+                </select>
+              </div>
+              <div class="filter-select-wrapper">
+                <select id="typeFilter">
+                  <option value="All types">All types</option>
+                  <option value="Lecture">Lecture</option>
+                  <option value="Seminar">Seminar</option>
+                  <option value="Lab">Lab</option>
+                  <option value="Auditorium">Auditorium</option>
+                </select>
+              </div>
+              <div class="filter-select-wrapper">
+                <select id="capacityFilter">
+                  <option value="0">Min capacity</option>
+                  <option value="40">40+ seats</option>
+                  <option value="80">80+ seats</option>
+                  <option value="150">150+ seats</option>
+                </select>
+              </div>
+              <div class="filter-select-wrapper">
+                <select id="amenityFilter">
+                  <option value="All amenities">All amenities</option>
+                  <option value="Projector">Projector</option>
+                  <option value="Mic">Mic</option>
+                  <option value="Accessible">Accessible</option>
+                  <option value="Optics bench">Optics bench</option>
+                </select>
+              </div>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><i class="dot vacant"></i>Vacant <span id="legendVacantCount">104</span></span>
+              <span class="legend-item"><i class="dot booked"></i>Booked <span id="legendBookedCount">24</span></span>
+              <span class="legend-item"><i class="dot blocked"></i>Blocked <span id="legendBlockedCount">3</span></span>
+              <span class="legend-item"><i class="dot pending"></i>Pending <span id="legendPendingCount">1</span></span>
+            </div>
+          </div>
+
+          <div class="cockpit-layout">
+            <section class="grid-panel">
+              <div class="schedule-grid" id="scheduleGrid" aria-label="Room schedule grid"></div>
+            </section>
+
+            <aside class="details-panel-wrapper">
+              <div class="cockpit-quick-guide">
+                <h3>Quick Cockpit Guide</h3>
+                <div class="guide-item">
+                  <strong>Move</strong>
+                  <span>Reassign class to a vacant room in the same slot.</span>
+                </div>
+                <div class="guide-item">
+                  <strong>Swap</strong>
+                  <span>Exchange rooms between two booked classes.</span>
+                </div>
+                <div class="guide-item">
+                  <strong>Block</strong>
+                  <span>Reserve rooms for exams/maintenance. Displaced classes go to unassigned queue.</span>
+                </div>
+              </div>
+              <div class="details-panel" id="detailsPanel">
+                <div class="empty-state">
+                  <div class="empty-icon">+</div>
+                  <h3>Select any grid cell</h3>
+                  <p>View booking details, resolve room moves, block rooms, or manage unassigned classes.</p>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section id="rooms" class="screen hidden">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Room Directory</p>
+              <h2>Find teaching spaces by constraints</h2>
+            </div>
+            <button class="btn primary">Add room</button>
+          </div>
+          <div class="directory-layout">
+            <div class="room-list" id="roomList"></div>
+            <article class="room-detail" id="roomDetail"></article>
+          </div>
+        </section>
+
+        <section id="requests" class="screen hidden">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Approvals</p>
+              <h2>Review, assign room/slots, then approve</h2>
+            </div>
+          </div>
+          <div class="approvals-workspace">
+            <div class="request-queue" id="requestQueue"></div>
+            <aside class="approval-panel" id="approvalPanel"></aside>
+          </div>
+        </section>
+
+        <section id="exams" class="screen hidden">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Multi-day · multi-slot · multi-room</p>
+              <h2>Bulk block for exams</h2>
+              <p style="font-size:13px;color:var(--text-muted);margin-top:4px;max-width:480px;">Use <strong>Resolve later</strong> when only some students have exams and displaced classes still need a room. Use <strong>Exam Period</strong> when teaching stops campus-wide — classes are suspended and auto-restored when you end the period.</p>
+            </div>
+          </div>
+          <div class="bulk-layout">
+            <form class="form-card bulk-form">
+              <div class="date-pair">
+                <label class="field"><span>From</span><input id="examFromDate" type="date" value="2026-05-26" /></label>
+                <label class="field"><span>To</span><input id="examToDate" type="date" value="2026-05-26" /></label>
+              </div>
+              <label class="field"><span>Slots</span><div class="segmented exam-slots"><button type="button">1 · 9-10</button><button type="button" class="active">2 · 10-11</button><button type="button" class="active">3 · 11-12</button><button type="button">4 · 1-2</button><button type="button">5 · 2-3</button><button type="button">6 · 3-4</button></div></label>
+              <label class="field"><span>Block type</span><select id="bulkBlockType"><option>Exam</option><option>Maintenance</option><option>Admin closure</option></select></label>
+              <label class="field"><span>Reason</span><textarea id="bulkBlockReason" placeholder="End-semester exam seating for first-year courses"></textarea></label>
+              <label class="field"><span>If conflicts</span>
+                <select id="bulkConflictPolicy" onchange="updateConflictPolicyHint()">
+                  <option value="resolve-later">Resolve later — move to unassigned queue</option>
+                  <option value="exam-period">Exam Period — suspend teaching for these dates</option>
+                  <option value="skip">Do not block conflicted rooms</option>
+                </select>
+              </label>
+              <div id="conflictPolicyHint" class="impact-box" style="margin-top:0;padding:10px 14px;font-size:12.5px;background:#f0fdf4;border-color:#86efac;color:#14532d;display:none;"></div>
+              <div class="cta-row"><button type="button" class="btn" id="previewBulkImpact">Preview impact</button><button type="button" class="btn primary" id="applyBulkBlock">Apply block</button></div>
+              <div class="impact-box" id="bulkImpactBox">Select rooms and preview impact before applying an exam/maintenance block.</div>
+            </form>
+
+            <!-- Exam Period Status Banner -->
+            <div id="examPeriodBanner" class="exam-period-banner hidden">
+              <div class="exam-period-banner-inner">
+                <div>
+                  <strong id="examPeriodLabel">Exam Period active</strong>
+                  <span id="examPeriodMeta">0 classes suspended across 0 dates</span>
+                </div>
+                <button class="btn primary" onclick="endExamPeriod()">End Exam Period &amp; Restore Classes</button>
+              </div>
+            </div>
+            <div class="bulk-room-panel">
+              <div class="bulk-room-header">
+                <div><p class="eyebrow">Rooms</p><h3><span id="bulkSelectedCount">0</span> selected</h3></div>
+                <div class="cta-row"><select id="bulkBuildingFilter"><option>All buildings</option><option>A: Main Academic Block</option><option>B: Seminar Block</option><option>C: Lecture Block</option><option>D: Lab Block</option><option>F: Auditorium & Events</option></select><button class="btn sm" id="toggleBulkRooms" type="button">Toggle all</button></div>
+              </div>
+              <div class="bulk-room-grid" id="bulkRoomGrid"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="issues" class="screen hidden">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Maintenance</p>
+              <h2>Issue queue and room blocks</h2>
+            </div>
+            <button class="btn primary" onclick="openAdminDispatchIssueModal()">Dispatch facilities</button>
+          </div>
+          <div class="kanban">
+            <article><h3>Requested</h3><div class="issue-card">Projector flicker in C-201<span>Reported by Dr. Mehta</span></div></article>
+            <article><h3>Approved</h3><div class="issue-card">D-LAB-2 optics bench calibration<span>Lab room compromised</span></div></article>
+            <article><h3>In progress</h3><div class="issue-card">Mic replacement in F-AUD-01<span>Expected 2 hours</span></div></article>
+            <article><h3>Resolved</h3><div class="issue-card">AC service in B-104<span>Closed yesterday</span></div></article>
+          </div>
+        </section>
+
+        <section id="notifications" class="screen hidden">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Announcements</p>
+              <h2>Send targeted updates</h2>
+            </div>
+          </div>
+          <div class="form-card narrow">
+            <label class="field"><span>Recipients</span><select><option>CS101 students + faculty + building staff</option></select></label>
+            <label class="field"><span>Message</span><textarea>CS101 Data Structures has moved from C-201 to B-204 for Slot 2 today.</textarea></label>
+            <button class="btn primary">Send notification</button>
+          </div>
+        </section>
+
+        <section id="directory" class="screen hidden" style="background: white; border-radius: var(--radius); padding: 32px; box-shadow: var(--shadow); margin-bottom: 32px; position: relative;">
+          <!-- Role-based Controls -->
+          <button id="dirBackBtn" class="btn hidden" style="position: absolute; top: 32px; left: 32px; display: flex; align-items: center; gap: 8px;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Dashboard
+          </button>
+          <button id="dirAddBtn" class="btn primary hidden" style="position: absolute; top: 32px; right: 32px;">+ Add Place</button>
+
+          <div style="max-width: 800px; margin: 0 auto;">
+            <div style="text-align: center; margin-bottom: 32px;">
+              <p class="eyebrow">My University</p>
+              <h2 style="font-size: 28px; margin-bottom: 12px;">Campus Directory</h2>
+              <p class="helper">Find administrative offices, study areas, and campus services.</p>
+              
+              <div class="field" style="margin-top: 24px; text-align: left;">
+                <input type="text" id="directorySearch" placeholder="Search for 'Library', 'Dean', or a room number..." style="padding: 12px 16px; font-size: 15px; box-shadow: var(--shadow-md); border-color: var(--line-strong);" />
+              </div>
+            </div>
+            
+            <div id="directoryContent">
+              <!-- Dynamically rendered -->
+            </div>
+          </div>
+        </section>
+
+        <section id="faculty" class="screen hidden">
+          <div class="role-home">
+            <div class="alert-strip">
+              <button class="alert-pill">2 classes today</button>
+              <button class="alert-pill warning" id="facultyRequestSummary">1 request awaiting admin</button>
+              <button class="alert-pill">Next: CS101 at 10 AM</button>
+            </div>
+            <div class="section-header">
+              <div><p class="eyebrow">Faculty Home</p><h2>My teaching schedule</h2></div>
+              <div class="cta-row" style="margin-top:0;">
+                <button class="btn primary" onclick="openFacultyRequestModal()">Raise request</button>
+              </div>
+            </div>
+            <div class="faculty-card-grid" id="facultyCardsContainer" style="max-width: 800px; margin: 0 auto; display: grid; gap: 16px;">
+              <!-- Dynamically populated by JS based on actual daily grid -->
+            </div>
+          </div>
+        </section>
+
+        <section id="facilities" class="screen hidden">
+          <div class="alert-strip">
+            <button class="alert-pill danger">2 urgent issues</button>
+            <button class="alert-pill warning">1 block awaiting admin</button>
+            <button class="alert-pill">14 rooms checked today</button>
+          </div>
+          <div class="section-header">
+            <div><p class="eyebrow">Facilities Manager</p><h2>Today’s operational schedule</h2></div>
+            <div class="cta-row" style="margin-top:0;">
+              <button class="btn primary" onclick="openFacilitiesLogIssueModal()">Log new issue</button>
+              <button class="btn" id="validateIssueBtn">Validate issue and request block</button>
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="ops-list">
+              <article><strong>D-LAB-2</strong><span>Slots 1-2: PHY Lab - Optics</span><em class="tag requested">Issue reported</em></article>
+              <article><strong>C-201</strong><span>Slot 2: CS101 Data Structures</span><em class="tag approved">Operational</em></article>
+              <article><strong>F-AUD-01</strong><span>Slot 5: Guest Talk</span><em class="tag blocked">Mic repair</em></article>
+            </div>
+            <div class="table-card" id="facilitiesInboxList">
+              <div class="table-row head"><span>Inbox</span><span>Status</span><span>Downtime</span></div>
+              <div class="table-row"><span>D-LAB-2 optics bench</span><span class="tag requested">Requested</span><span>9-11</span></div>
+              <div class="table-row"><span>C-201 projector flicker</span><span class="tag approved">Approved</span><span>After 4 PM</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="student" class="screen hidden">
+          <div class="student-shell" style="max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 340px; gap: 32px;">
+            <!-- Main Content: Up Next & Timeline -->
+            <div class="student-main">
+              <!-- Up Next Hero Card -->
+              <div id="studentUpNextBanner" class="up-next-card" style="background: linear-gradient(135deg, var(--booked) 0%, #1e3a8a 100%); color: white; border-radius: var(--radius); padding: 32px; box-shadow: var(--shadow-md); margin-bottom: 32px; position: relative; overflow: hidden;">
+                <p id="studentUpNextLabel" style="font-size: 13px; font-weight: 600; letter-spacing: 0.5px; opacity: 0.8; margin-bottom: 8px; text-transform: uppercase;">Up Next</p>
+                <h2 id="studentUpNextTitle" style="font-size: 28px; margin-bottom: 16px; color: white;">CS101 Data Structures</h2>
+                
+                <div id="studentUpNextMeta" style="display: flex; gap: 24px; align-items: center; font-size: 15px;">
+                  <span style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span id="studentUpNextSlot">Slot 2 (10:00 AM - 11:00 AM)</span>
+                  </span>
+                  <span style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    <span id="studentUpNextRoom">Room C-201</span>
+                  </span>
+                </div>
+                
+                <!-- Decorative background icon -->
+                <svg width="120" height="120" fill="none" stroke="white" viewBox="0 0 24 24" style="position: absolute; right: -20px; bottom: -20px; opacity: 0.1;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+              </div>
+
+              <!-- Daily Timeline -->
+              <div class="section-header compact-header" style="margin-bottom: 24px;">
+                <div>
+                  <h2 id="studentTimelineTitle">Today's Timeline</h2>
+                </div>
+              </div>
+              
+              <div class="student-timeline" id="studentTimelineContainer" style="display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 20px; border-left: 2px solid var(--line);">
+                <!-- Past Class -->
+                <div class="timeline-item" style="position: relative; opacity: 0.6;">
+                  <div style="position: absolute; left: -27px; top: 16px; width: 12px; height: 12px; border-radius: 50%; background: var(--line-strong); border: 2px solid white;"></div>
+                  <div class="poi-card" style="margin: 0; display: grid; grid-template-columns: 100px 1fr; align-items: center;">
+                    <div style="font-weight: 600; font-size: 14px; color: var(--text-muted);">8:00 AM</div>
+                    <div>
+                      <strong style="display: block; margin-bottom: 4px;">MA201 Linear Algebra</strong>
+                      <span style="font-size: 13px; color: var(--text-muted);">Room A-101 • Prof. Suresh Iyer</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Current/Next Class -->
+                <div class="timeline-item" style="position: relative;">
+                  <div style="position: absolute; left: -27px; top: 16px; width: 12px; height: 12px; border-radius: 50%; background: var(--booked); border: 2px solid white; box-shadow: 0 0 0 3px var(--booked-border);"></div>
+                  <div class="poi-card" style="margin: 0; display: grid; grid-template-columns: 100px 1fr; align-items: center; border-color: var(--booked-border); background: var(--booked-bg);">
+                    <div style="font-weight: 600; font-size: 14px; color: var(--booked);">10:00 AM</div>
+                    <div>
+                      <strong style="display: block; margin-bottom: 4px;">CS101 Data Structures</strong>
+                      <span style="font-size: 13px; color: var(--text-muted);">Room C-201 • Dr. Ananya Mehta</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Future Class -->
+                <div class="timeline-item" style="position: relative;">
+                  <div style="position: absolute; left: -27px; top: 16px; width: 12px; height: 12px; border-radius: 50%; background: white; border: 2px solid var(--line-strong);"></div>
+                  <div class="poi-card" style="margin: 0; display: grid; grid-template-columns: 100px 1fr; align-items: center;">
+                    <div style="font-weight: 600; font-size: 14px; color: var(--text-muted);">2:00 PM</div>
+                    <div>
+                      <strong style="display: block; margin-bottom: 4px;">Guest Talk: Product in India</strong>
+                      <span style="font-size: 13px; color: var(--text-muted);">F-AUD-01 • Prof. Rao</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Sidebar: Notices & Places -->
+            <aside class="student-sidebar" style="display: flex; flex-direction: column; gap: 24px;">
+              <section class="student-card" style="background: white; border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow);">
+                <div class="section-header compact-header" style="margin-bottom: 16px;">
+                  <div>
+                    <h2 style="font-size: 16px;">Campus Notices</h2>
+                  </div>
+                </div>
+                <div class="student-notice warning" style="margin-bottom: 12px; padding: 12px; border-radius: 6px; background: var(--pending-bg); border: 1px solid var(--pending-border);">
+                  <strong style="display: block; color: var(--pending); font-size: 14px; margin-bottom: 4px;">CS101 has moved virtual today</strong>
+                  <span style="font-size: 12px; color: var(--text-muted);">Updated by Dr. Ananya Mehta. Room C-201 released.</span>
+                </div>
+                <div class="student-notice" style="padding: 12px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line);">
+                  <strong style="display: block; font-size: 14px; margin-bottom: 4px;">Programming Lab moved to D-LAB-5</strong>
+                  <span style="font-size: 12px; color: var(--text-muted);">Slot 4 today. Lab Block only.</span>
+                </div>
+              </section>
+              
+              <section class="student-card" style="background: white; border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow);">
+                <div class="section-header compact-header" style="margin-bottom: 16px;">
+                  <div>
+                    <h2 style="font-size: 16px;">Quick Links</h2>
+                  </div>
+                  <button class="btn sm" data-screen="directory" onclick="showScreen('directory')">Open</button>
+                </div>
+                <div class="quick-place" style="padding: 8px 0; border-bottom: 1px solid var(--line);">
+                  <strong style="display: block; font-size: 14px;">Central Library</strong>
+                  <span style="font-size: 12px; color: var(--text-muted);">A Block · open until 11 PM</span>
+                </div>
+                <div class="quick-place" style="padding: 8px 0;">
+                  <strong style="display: block; font-size: 14px;">Medical Centre</strong>
+                  <span style="font-size: 12px; color: var(--text-muted);">H-011 · 24x7</span>
+                </div>
+              </section>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ═══════════════ MASTER SCHEDULING ═══════════════ -->
+        <section id="master-schedule" class="screen hidden">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Academic Planning</p>
+              <h2>Master Timetable Mapping</h2>
+              <p class="helper">Manage global slot distributions across all campus classrooms concurrently.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn" onclick="openPatternBuilderModal()">+ Schedule New Course</button>
+              <button class="btn primary" id="generateTimetableBtn">Publish Slot Matrix</button>
+            </div>
+          </div>
+          
+          <div class="master-schedule-layout">
+            <!-- Pane A: Slot Selection -->
+            <div class="master-pane cohort-pane">
+              <h3>Global Slot Groups</h3>
+              <div class="field">
+                <input type="text" placeholder="Search slots (e.g. A Group)..." />
+              </div>
+              <div class="cohort-list" id="slotList">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+            
+            <!-- Pane B: Course Assignments -->
+            <div class="master-pane constraints-pane">
+              <h3>Concurrent Courses</h3>
+              <div class="empty-state" id="constraintsEmptyState">
+                <p>Select a slot group to view its concurrent courses.</p>
+              </div>
+              <div id="constraintsContent" class="hidden">
+                <div class="cohort-title-bar">
+                  <strong id="activeCohortTitle">A Group (A11+A13+A15)</strong>
+                  <span class="tag">0 Courses</span>
+                </div>
+                <div class="course-constraints-list" id="courseConstraintsList">
+                  <!-- Dynamically populated -->
+                </div>
+              </div>
+            </div>
+            
+            <!-- Pane C: Campus Map -->
+            <div class="master-pane output-pane" style="overflow: hidden;">
+              <h3>Campus Occupancy Grid</h3>
+              <div class="campus-map-container" id="campusMapContainer" style="padding: 16px; overflow: auto; height: 100%; background: #f1f5f9;">
+                <div class="empty-state">
+                  <p>Campus grid will map physical room assignments.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══════════════ SETTINGS & INFRASTRUCTURE ═══════════════ -->
+        <section id="settings" class="screen hidden">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Admin Configuration</p>
+              <h2>Campus Infrastructure Setup</h2>
+            </div>
+          </div>
+
+          <!-- Settings Tab Bar -->
+          <div class="settings-tabs" id="settingsTabs">
+            <button class="settings-tab active" data-tab="slots">Global Slot Config</button>
+            <button class="settings-tab" data-tab="buildings">Buildings</button>
+            <button class="settings-tab" data-tab="infrarooms">Rooms &amp; Slot Assignments</button>
+            <button class="settings-tab" data-tab="calendar">Academic Calendar</button>
+            <button class="settings-tab" data-tab="firebase">Firebase Production</button>
+          </div>
+
+          <!-- Tab: Global Slot Config -->
+          <div class="settings-panel" id="settingsPanel-slots">
+            <div class="settings-panel-header">
+              <p>Define the global time ranges that make up each scheduling slot across the campus. Changes apply to all buildings.</p>
+            </div>
+            <div id="slotConfigList"></div>
+          </div>
+
+          <!-- Tab: Buildings -->
+          <div class="settings-panel hidden" id="settingsPanel-buildings">
+            <div class="settings-panel-header">
+              <p>Manage the 8 campus blocks. Each building contains rooms that can be scheduled.</p>
+            </div>
+            <div id="buildingsList"></div>
+          </div>
+
+          <!-- Tab: Rooms & Slot Assignments -->
+          <div class="settings-panel hidden" id="settingsPanel-infrarooms">
+            <div class="settings-panel-header">
+              <div class="field" style="max-width:300px; margin-bottom:0;">
+                <span>Select Building</span>
+                <select id="infraBuildingSelect" onchange="renderInfraRooms()">
+                  <option value="">-- Choose Building --</option>
+                </select>
+              </div>
+            </div>
+            <div id="infraRoomsList" style="margin-top:16px;"></div>
+            <button class="btn primary" style="margin-top:16px;" onclick="openAddRoomModal()" id="addRoomBtn">+ Add Room</button>
+          </div>
+
+          <!-- Tab: Academic Calendar Config -->
+          <div class="settings-panel hidden" id="settingsPanel-calendar">
+            <div class="settings-panel-header">
+              <p>Configure the Academic Year, recurring off-days, and specific University Holidays.</p>
+            </div>
+            <div id="calendarConfigContainer"></div>
+          </div>
+
+          <!-- Tab: Firebase Production Config -->
+          <div class="settings-panel hidden" id="settingsPanel-firebase">
+            <div class="settings-panel-header">
+              <p>Configure live database syncing and real user login credentials using Firebase. Save credentials to localStorage for this browser session.</p>
+            </div>
+            <div style="background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 16px; max-width: 600px;">
+              <label class="field"><span>Firebase API Key</span><input id="fbApiKey" placeholder="AIzaSy..." /></label>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <label class="field"><span>Project ID</span><input id="fbProjectId" placeholder="my-campusgrid-project" /></label>
+                <label class="field"><span>Auth Domain</span><input id="fbAuthDomain" placeholder="my-campusgrid-project.firebaseapp.com" /></label>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <label class="field"><span>Storage Bucket</span><input id="fbStorageBucket" placeholder="my-campusgrid-project.appspot.com" /></label>
+                <label class="field"><span>Messaging Sender ID</span><input id="fbMessagingSenderId" placeholder="123456789012" /></label>
+              </div>
+              <label class="field"><span>App ID</span><input id="fbAppId" placeholder="1:123456789012:web:abcd1234efgh5678" /></label>
+              <div style="display: flex; gap: 12px; margin-top: 10px;">
+                <button class="btn primary" id="saveFirebaseConfigBtn">Save &amp; Reload Configuration</button>
+                <button class="btn" id="clearFirebaseConfigBtn">Reset to Code Default</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Screen: Calendar -->
+        <section id="calendar" class="screen hidden">
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+            <h2 style="font-size: 20px; font-weight: 700; color: var(--ink);">May 2026</h2>
+            <div style="display: flex; gap: 16px; font-size: 13px;">
+              <span style="display: flex; align-items: center; gap: 6px;"><div style="width:12px; height:12px; border-radius:3px; background:var(--primary);"></div> Active Day</span>
+              <span style="display: flex; align-items: center; gap: 6px;"><div style="width:12px; height:12px; border-radius:3px; background:var(--danger);"></div> Holiday</span>
+              <span style="display: flex; align-items: center; gap: 6px;"><div style="width:12px; height:12px; border-radius:3px; background:var(--warning);"></div> Exam Period</span>
+            </div>
+          </div>
+          <div class="calendar-grid" id="universityCalendarGrid">
+            <!-- Populated by JS -->
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <div class="modal-backdrop hidden" id="moveModal">
+      <section class="modal">
+        <button class="modal-close" id="closeModal" aria-label="Close">x</button>
+        <div class="modal-header">
+          <p class="eyebrow">Move / Swap flow</p>
+          <h2 id="modalTitle">Resolve CS101 room issue</h2>
+        </div>
+        <div class="steps">
+          <button class="step active" data-step="1">1 Impact</button>
+          <button class="step" data-step="2">2 Alternatives</button>
+          <button class="step" data-step="3">3 Swap</button>
+          <button class="step" data-step="4">4 Confirm</button>
+        </div>
+        <div id="modalBody"></div>
+      </section>
+    </div>
+
+    <!-- Course Pattern Builder Modal -->
+    <div class="modal-backdrop hidden" id="patternBuilderModal">
+      <section class="modal" style="width: 600px;">
+        <button class="modal-close" onclick="closePatternBuilderModal()" aria-label="Close">x</button>
+        <div class="modal-header">
+          <p class="eyebrow">Interactive Builder</p>
+          <h2>Schedule New Course</h2>
+        </div>
+        
+        <div style="padding: 24px;">
+          <!-- Course Info -->
+          <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+            <label class="field" style="flex: 1;">
+              <span>Base Course Code</span>
+              <input type="text" id="builderCourseId" placeholder="e.g. CS201" oninput="updateLivePreview()" />
+            </label>
+            <label class="field" style="flex: 2;">
+              <span>Course Name</span>
+              <input type="text" id="builderCourseName" placeholder="e.g. Advanced Data Structures" />
+            </label>
+          </div>
+          <div style="display: flex; gap: 16px; margin-bottom: 24px;">
+            <label class="field" style="flex: 1;">
+              <span>Faculty Name</span>
+              <input type="text" id="builderFacultyName" placeholder="e.g. Dr. Ananya Mehta" />
+            </label>
+            <label class="field" style="flex: 1;">
+              <span>Cohort / Audience</span>
+              <input type="text" id="builderCohort" placeholder="e.g. B.Tech CS Year 2" />
+            </label>
+            <label class="field" style="flex: 1;">
+              <span>Effective Start Date</span>
+              <input type="date" id="builderEffectiveDate" />
+            </label>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid var(--line); margin: 24px 0;" />
+          
+          <!-- Interactive Toggles -->
+          <h3 style="font-size: 14px; margin-bottom: 12px; font-weight: 600;">1. Select Slot of the Day</h3>
+          <div class="builder-toggles" id="slotToggles" style="margin-bottom: 24px;">
+            <button class="builder-toggle" data-val="A">Slot 1 (A)</button>
+            <button class="builder-toggle" data-val="B">Slot 2 (B)</button>
+            <button class="builder-toggle" data-val="C">Slot 3 (C)</button>
+            <button class="builder-toggle" data-val="D">Slot 4 (D)</button>
+            <button class="builder-toggle" data-val="E">Slot 5 (E)</button>
+            <button class="builder-toggle" data-val="F">Slot 6 (F)</button>
+          </div>
+
+          <h3 style="font-size: 14px; margin-bottom: 12px; font-weight: 600;">2. Select Days of the Week</h3>
+          <div class="builder-toggles" id="dayToggles" style="margin-bottom: 24px;">
+            <button class="builder-toggle" data-val="11">Monday</button>
+            <button class="builder-toggle" data-val="12">Tuesday</button>
+            <button class="builder-toggle" data-val="13">Wednesday</button>
+            <button class="builder-toggle" data-val="14">Thursday</button>
+            <button class="builder-toggle" data-val="15">Friday</button>
+          </div>
+
+          <!-- Live Preview -->
+          <div style="background: #f8fafc; border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 13px; font-weight: 600;">Generated Pattern:</span>
+              <span id="builderLivePreview" style="font-size: 14px; font-weight: 700; color: var(--primary); background: #eff6ff; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--primary);">Select options above</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 13px; font-weight: 600;">Generated Course ID:</span>
+              <span id="builderCourseIdPreview" style="font-size: 14px; font-weight: 700; color: var(--ink); font-family: monospace;">Awaiting inputs...</span>
+            </div>
+          </div>
+          
+          <!-- Resource Assignment -->
+          <h3 style="font-size: 14px; margin-bottom: 12px; font-weight: 600;">3. Resource Assignment</h3>
+          <label class="field">
+            <span>Assign Classroom</span>
+            <select id="builderRoomSelect" onchange="updateLivePreview()">
+              <option value="">-- Pick an available room --</option>
+              <option value="A-101">A-101 (Capacity 120)</option>
+              <option value="C-201">C-201 (Capacity 80)</option>
+              <option value="D-LAB-1">D-LAB-1 (Capacity 40)</option>
+            </select>
+          </label>
+          <label class="field" style="display:flex; flex-direction:row; align-items:center; gap:8px; cursor:pointer; margin-top: 10px; margin-bottom: 10px;">
+            <input type="checkbox" id="builderAccessibilityRequired" style="width:auto; margin:0;" />
+            <span style="font-size: 13px;">♿ Requires Accessible Classroom (Mobility Needs)</span>
+          </label>
+        </div>
+
+        <div style="padding: 16px 24px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn" onclick="closePatternBuilderModal()">Cancel</button>
+          <button class="btn primary" onclick="submitNewCourse()">Add to Master Schedule</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="toast hidden" id="toast"></div>
+    <!-- Firebase Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <!-- Firebase Config Template -->
+    <script src="./firebase-config.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

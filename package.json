@@ -1,0 +1,19 @@
+{
+  "name": "campus-grid",
+  "version": "1.0.0",
+  "description": "CampusGrid Lecture Hall Operations Platform",
+  "main": "app.js",
+  "scripts": {
+    "bulk-upload": "node bulk_upload.js",
+    "serve": "npx serve .",
+    "test": "echo \"Error: no test specified\" && exit 0"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
+  "author": "Varun Sharma",
+  "license": "MIT"
+}

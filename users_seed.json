@@ -1,0 +1,42 @@
+[
+  {
+    "email": "admin@univ.edu",
+    "name": "Varun Sharma (Admin)",
+    "role": "admin"
+  },
+  {
+    "email": "faculty.ananya@univ.edu",
+    "name": "Dr. Ananya Mehta",
+    "role": "faculty",
+    "taughtCourses": ["CS101", "CS102", "CS201-L"]
+  },
+  {
+    "email": "faculty.suresh@univ.edu",
+    "name": "Prof. Suresh Iyer",
+    "role": "faculty",
+    "taughtCourses": ["MA201", "MA202", "PHY204-L"]
+  },
+  {
+    "email": "facilities.singh@univ.edu",
+    "name": "Harpreet Singh",
+    "role": "facilities"
+  },
+  {
+    "email": "student.rahul@univ.edu",
+    "name": "Rahul Verma",
+    "role": "student",
+    "enrolledCourses": ["CS101", "MA201", "PHY204-L"]
+  },
+  {
+    "email": "student.priya@univ.edu",
+    "name": "Priya Sharma",
+    "role": "student",
+    "enrolledCourses": ["CS101", "MA201", "CS201-L"]
+  },
+  {
+    "email": "student.amit@univ.edu",
+    "name": "Amit Patel",
+    "role": "student",
+    "enrolledCourses": ["CS102", "MA202", "ME301"]
+  }
+]
