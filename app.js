@@ -621,6 +621,7 @@ function renderScheduleGrid() {
   
   // Restore grid display in case it was overridden by empty state
   grid.style.display = "grid";
+  grid.style.gridTemplateColumns = `140px repeat(${slotTimes.length}, 1fr)`;
 
   const selectedBuilding = $("#buildingFilter")?.value || "All buildings";
   const selectedType = $("#typeFilter")?.value || "All types";
@@ -656,7 +657,7 @@ function renderScheduleGrid() {
         const matchesType = room.type.toLowerCase().includes(searchVal);
         
         let matchesClass = false;
-        for (let slot = 1; slot <= 6; slot++) {
+        for (let slot = 1; slot <= slotTimes.length; slot++) {
           const key = `${room.id}-${slot}`;
           const cell = daySchedule[key];
           if (cell && (
@@ -677,7 +678,7 @@ function renderScheduleGrid() {
 
     // Building Group Header Row
     html += `
-      <div class="grid-building-header">
+      <div class="grid-building-header" style="grid-column: span ${slotTimes.length + 1};">
         <span>BLOCK ${building.code} &mdash; ${building.name}</span>
         <span>${filteredRooms.length} room${filteredRooms.length === 1 ? "" : "s"}</span>
       </div>
@@ -692,8 +693,8 @@ function renderScheduleGrid() {
         </div>
       `;
 
-      // 6 Slots
-      for (let slot = 1; slot <= 6; slot++) {
+      // Slots
+      for (let slot = 1; slot <= slotTimes.length; slot++) {
         const key = `${room.id}-${slot}`;
         const cell = daySchedule[key];
         let cellClass = "slot-cell vacant";
@@ -2687,7 +2688,7 @@ window.updateBulkImpact = function() {
   const policy = $("#bulkConflictPolicy")?.value || "resolve-later";
   const slots = Array.from($$(".exam-slots button.active")).length;
   const conflicts = Array.from(selectedBulkRooms).reduce((acc, roomId) => {
-    for (let s = 1; s <= 6; s++) {
+    for (let s = 1; s <= slotTimes.length; s++) {
       const cell = state.cellData[state.currentDate]?.[`${roomId}-${s}`];
       if (cell?.status === "booked") acc++;
     }
@@ -4186,7 +4187,7 @@ document.addEventListener("DOMContentLoaded", () => {
     modeOfflineBtn.classList.add("active");
     modeFirebaseBtn.classList.remove("active");
     updateFirebaseStatusIndicator();
-    populateAllBuildingDropdowns(); // Revert to offline buildings in filters if needed
+    populateAllDynamicUI(); // Revert filters/slots to offline configurations if needed
     showToast("Switched to Offline Demo mode.");
   });
   
@@ -4259,8 +4260,8 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => { window.location.reload(); }, 1500);
   });
 
-  // Run dynamic dropdown population initially
-  populateAllBuildingDropdowns();
+  // Run dynamic UI populator initially
+  populateAllDynamicUI();
 });
 
 // Override the Sign-In click listener
@@ -4302,8 +4303,8 @@ setTimeout(() => {
           // Activate dynamic syncing
           setupFirebaseListeners();
           
-          // Re-populate all dropdown filters after database state loads
-          populateAllBuildingDropdowns();
+          // Re-populate all dropdown filters and dynamic elements after database loads
+          populateAllDynamicUI();
           
           // Log in and set role
           document.body.classList.remove('show-login');
@@ -4336,8 +4337,8 @@ setTimeout(() => {
   });
 }, 500);
 
-// Dynamic Select Options Populator (Removes hardcoding from UI filters)
-function populateAllBuildingDropdowns() {
+// Dynamic UI Options Populator (Removes hardcoding from UI filters & slot matrices)
+function populateAllDynamicUI() {
   const buildingFilter = document.getElementById("buildingFilter");
   if (buildingFilter) {
     const curVal = buildingFilter.value;
@@ -4356,6 +4357,20 @@ function populateAllBuildingDropdowns() {
       html += `<option value="${b.code}" ${b.code === curVal ? 'selected' : ''}>Block ${b.code}: ${b.name}</option>`;
     });
     bulkBuildingFilter.innerHTML = html;
+  }
+
+  // Populate bulk exam slots list
+  const examSlotsContainer = document.querySelector(".exam-slots");
+  if (examSlotsContainer) {
+    // Check active buttons
+    const activeIndices = Array.from(examSlotsContainer.querySelectorAll("button")).map((btn, idx) => {
+      return btn.classList.contains("active") ? idx : null;
+    }).filter(v => v !== null);
+    
+    examSlotsContainer.innerHTML = slotTimes.map((slot, idx) => {
+      const isActive = activeIndices.includes(idx) || (activeIndices.length === 0 && (idx === 1 || idx === 2));
+      return `<button type="button" class="${isActive ? 'active' : ''}">${idx + 1} · ${slot.time}</button>`;
+    }).join("");
   }
 }
 
@@ -4404,6 +4419,8 @@ function saveState(dataType, key = null) {
         fbDb.collection('config').doc('calendar').set(state.calendarConfig);
       } else if (dataType === 'buildings') {
         fbDb.collection('config').doc('buildings').set({ list: state.buildings });
+      } else if (dataType === 'slots') {
+        fbDb.collection('config').doc('slots').set({ list: slotTimes });
       } else if (dataType === 'mockSlotGroups') {
         if (key) {
           const group = mockSlotGroups.find(g => g.id === key);
@@ -4479,6 +4496,16 @@ async function firebaseLoad() {
     const bldDoc = await fbDb.collection('config').doc('buildings').get();
     if (bldDoc.exists) {
       state.buildings = bldDoc.data().list || [];
+    }
+
+    // 8. Slots configuration
+    const slotsDoc = await fbDb.collection('config').doc('slots').get();
+    if (slotsDoc.exists) {
+      const loadedSlots = slotsDoc.data().list || [];
+      if (loadedSlots.length > 0) {
+        slotTimes.length = 0;
+        loadedSlots.forEach(s => slotTimes.push(s));
+      }
     }
     
     console.log("State successfully loaded from Firestore.");
@@ -4583,8 +4610,25 @@ function setupFirebaseListeners() {
       state.buildings = doc.data().list || [];
       isSyncingFromFirebase = false;
       populateInfraBuildingSelect();
-      populateAllBuildingDropdowns();
+      populateAllDynamicUI();
       refreshActiveViews();
+    }
+  });
+
+  // Slots config listener
+  fbDb.collection('config').doc('slots').onSnapshot(doc => {
+    if (isSyncingFromFirebase) return;
+    if (doc.exists) {
+      const loadedSlots = doc.data().list || [];
+      if (loadedSlots.length > 0) {
+        isSyncingFromFirebase = true;
+        slotTimes.length = 0;
+        loadedSlots.forEach(s => slotTimes.push(s));
+        isSyncingFromFirebase = false;
+        populateAllDynamicUI();
+        refreshActiveViews();
+        if (typeof renderSlotConfig === 'function') renderSlotConfig();
+      }
     }
   });
 }
@@ -4612,6 +4656,7 @@ async function seedFirestoreIfEmpty() {
       
       await fbDb.collection('config').doc('calendar').set(state.calendarConfig);
       await fbDb.collection('config').doc('buildings').set({ list: state.buildings });
+      await fbDb.collection('config').doc('slots').set({ list: slotTimes });
       
       for (const date in state.cellData) {
         await fbDb.collection('schedules').doc(date).set(state.cellData[date]);
@@ -4701,6 +4746,12 @@ renderInfraRooms = function(...args) {
 const originalPopulateInfraBuildingSelect = populateInfraBuildingSelect;
 populateInfraBuildingSelect = function(...args) {
   if (originalPopulateInfraBuildingSelect) originalPopulateInfraBuildingSelect.apply(this, args);
-  populateAllBuildingDropdowns();
+  populateAllDynamicUI();
+};
+
+const originalRenderSlotConfig = renderSlotConfig;
+renderSlotConfig = function(...args) {
+  if (originalRenderSlotConfig) originalRenderSlotConfig.apply(this, args);
+  saveState('slots');
 };
 
