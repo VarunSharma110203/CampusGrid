@@ -5175,15 +5175,53 @@ document.addEventListener("DOMContentLoaded", () => {
       { id: "iss2", room: "D-LAB", title: "Optics calibration", reporter: "Prof. Iyer", status: "progress", priority: "normal" }
     ],
     selectedCell: null,
-    selectedUnassigned: null
+    selectedUnassigned: null,
+    bulkExamActive: true,
+    originalRoomsBackup: null
   };
 
+  // Helper to apply the bulk exam blocks initially or upon activate
+  function applyBulkExamBlock() {
+    if (!simState.originalRoomsBackup) {
+      simState.originalRoomsBackup = JSON.parse(JSON.stringify(simState.rooms));
+    }
+    const targetRooms = ["A-101", "C-201"];
+    targetRooms.forEach(room => {
+      const slots = simState.rooms[room];
+      for (const [slot, cell] of Object.entries(slots)) {
+        if (cell.type === "booked") {
+          if (!simState.unassigned.some(c => c.courseId === cell.courseId)) {
+            simState.unassigned.push({ courseId: cell.courseId, instructor: cell.instructor });
+          }
+        }
+        simState.rooms[room][slot] = { type: "blocked", label: "Blocked (Exam)", courseId: "", instructor: "" };
+      }
+    });
+  }
+
+  function removeBulkExamBlock() {
+    if (simState.originalRoomsBackup) {
+      simState.rooms = JSON.parse(JSON.stringify(simState.originalRoomsBackup));
+      simState.originalRoomsBackup = null;
+    }
+    const examCourses = ["MA201", "ME201", "CS102"];
+    simState.unassigned = simState.unassigned.filter(c => !examCourses.includes(c.courseId));
+  }
+
+  // Initial call on load to match initial HTML state
+  applyBulkExamBlock();
+
   function renderSimAdmin() {
-    const gridEl = document.getElementById("simAdminGrid");
-    const alertEl = document.getElementById("simAdminAlertBar");
-    const detailEl = document.getElementById("simAdminDetailCard");
-    const unassignedBox = document.getElementById("simAdminUnassignedBox");
-    const unassignedList = document.getElementById("simAdminUnassignedList");
+    renderAdminConfig("simAdminGrid", "simAdminAlertBar", "simAdminDetailCard", "simAdminUnassignedBox", "simAdminUnassignedList");
+    renderAdminConfig("scrollAdminGrid", "scrollAdminAlertBar", "scrollAdminDetailCard", "scrollAdminUnassignedBox", "scrollAdminUnassignedList");
+  }
+
+  function renderAdminConfig(gridId, alertId, detailId, unassignedBoxId, unassignedListId) {
+    const gridEl = document.getElementById(gridId);
+    const alertEl = document.getElementById(alertId);
+    const detailEl = document.getElementById(detailId);
+    const unassignedBox = document.getElementById(unassignedBoxId);
+    const unassignedList = document.getElementById(unassignedListId);
     
     if (!gridEl) return;
     
@@ -5196,10 +5234,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     if (hasConflict) {
-      alertEl.style.display = "flex";
-      alertEl.innerHTML = `<strong>⚠️ SCHEDULING NOTICE</strong> <span>${conflictMsg}</span>`;
+      if (alertEl) {
+        alertEl.style.display = "flex";
+        alertEl.innerHTML = `<strong>⚠️ SCHEDULING NOTICE</strong> <span>${conflictMsg}</span>`;
+      }
     } else {
-      alertEl.style.display = "none";
+      if (alertEl) alertEl.style.display = "none";
     }
     
     let html = `<div class="mock-row head"><span>Space</span><span>Slot 1</span><span>Slot 2</span><span>Slot 3</span></div>`;
@@ -5243,7 +5283,9 @@ document.addEventListener("DOMContentLoaded", () => {
         
         if (simState.selectedCell && simState.selectedCell.room === room && simState.selectedCell.slot === slot) {
           simState.selectedCell = null;
-          detailEl.style.display = "none";
+          if (detailEl) detailEl.style.display = "none";
+          const twinDetailEl = document.getElementById(detailId === "simAdminDetailCard" ? "scrollAdminDetailCard" : "simAdminDetailCard");
+          if (twinDetailEl) twinDetailEl.style.display = "none";
         } else {
           simState.selectedCell = { room, slot };
           renderSimAdminDetailsCard();
@@ -5253,113 +5295,131 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     
     if (simState.unassigned.length > 0) {
-      unassignedBox.style.display = "block";
+      if (unassignedBox) unassignedBox.style.display = "block";
       let unassignedHtml = "";
       simState.unassigned.forEach(c => {
         const isSelected = simState.selectedUnassigned === c.courseId;
         const style = isSelected ? "border-color: var(--cg-accent-student); box-shadow: 0 0 8px var(--cg-accent-student);" : "";
         unassignedHtml += `<span class="sim-unassigned-chip" style="${style}" data-course-id="${c.courseId}">${c.courseId}</span>`;
       });
-      unassignedList.innerHTML = unassignedHtml;
-      
-      unassignedList.querySelectorAll(".sim-unassigned-chip").forEach(chip => {
-        chip.addEventListener("click", () => {
-          const courseId = chip.dataset.courseId;
-          if (simState.selectedUnassigned === courseId) {
-            simState.selectedUnassigned = null;
-          } else {
-            simState.selectedUnassigned = courseId;
-            simState.selectedCell = null;
-            detailEl.style.display = "none";
-            showToast(`Select a vacant room cell to assign ${courseId}`);
-          }
-          syncAllSimViews();
+      if (unassignedList) {
+        unassignedList.innerHTML = unassignedHtml;
+        unassignedList.querySelectorAll(".sim-unassigned-chip").forEach(chip => {
+          chip.addEventListener("click", () => {
+            const courseId = chip.dataset.courseId;
+            if (simState.selectedUnassigned === courseId) {
+              simState.selectedUnassigned = null;
+            } else {
+              simState.selectedUnassigned = courseId;
+              simState.selectedCell = null;
+              if (detailEl) detailEl.style.display = "none";
+              const twinDetailEl = document.getElementById(detailId === "simAdminDetailCard" ? "scrollAdminDetailCard" : "simAdminDetailCard");
+              if (twinDetailEl) twinDetailEl.style.display = "none";
+              showToast(`Select a vacant room cell to assign ${courseId}`);
+            }
+            syncAllSimViews();
+          });
         });
-      });
+      }
     } else {
-      unassignedBox.style.display = "none";
+      if (unassignedBox) unassignedBox.style.display = "none";
     }
   }
-  
+
   function renderSimAdminDetailsCard() {
     const detailEl = document.getElementById("simAdminDetailCard");
-    if (!detailEl || !simState.selectedCell) return;
+    const scrollDetailEl = document.getElementById("scrollAdminDetailCard");
+    if (!simState.selectedCell) return;
     
     const { room, slot } = simState.selectedCell;
     const cell = simState.rooms[room][slot];
     
-    detailEl.style.display = "block";
-    
-    let html = `<div class="sim-popover-card">
-        <div class="sim-popover-header">
-          <strong>${room} · ${slot.toUpperCase()}</strong>
-          <span style="font-size:9.5px;text-transform:uppercase;color:var(--cg-light-gray);">${cell.type}</span>
-        </div>`;
-        
-    if (cell.type === "booked") {
-      html += `
-        <div style="font-size: 11px; color: var(--cg-light-gray); margin-bottom: 4px;">
-          Course: <strong style="color:var(--cg-white);">${cell.courseId}</strong><br>
-          Faculty: <span>${cell.instructor}</span>
-        </div>
-        <div class="sim-popover-actions">
-          <button class="block-btn" id="simActionBlock">Block Room</button>
-          <button class="move-btn" id="simActionDisplace">Displace Class</button>
-        </div>`;
-    } else if (cell.type === "vacant") {
-      html += `
-        <div style="font-size: 11px; color: var(--cg-light-gray); margin-bottom: 4px;">
-          This space is currently vacant.
-        </div>
-        <div class="sim-popover-actions">
-          <button class="block-btn" id="simActionBlock">Block Room</button>
-        </div>`;
-    } else if (cell.type === "blocked") {
-      html += `
-        <div style="font-size: 11px; color: var(--cg-light-gray); margin-bottom: 4px;">
-          Blocked for maintenance/exams.
-        </div>
-        <div class="sim-popover-actions">
-          <button class="move-btn" id="simActionUnblock" style="background:rgba(16,185,129,0.15);color:#34d399;border-color:rgba(16,185,129,0.25);">Unblock Room</button>
-        </div>`;
-    }
-    
-    html += `</div>`;
-    detailEl.innerHTML = html;
-    
-    document.getElementById("simActionBlock")?.addEventListener("click", () => {
-      const currentCell = simState.rooms[room][slot];
-      if (currentCell.type === "booked") {
-        simState.unassigned.push({ courseId: currentCell.courseId, instructor: currentCell.instructor });
+    const populateDetail = (el, prefix) => {
+      if (!el) return;
+      el.style.display = "block";
+      
+      let html = `<div class="sim-popover-card">
+          <div class="sim-popover-header">
+            <strong>${room} · ${slot.toUpperCase()}</strong>
+            <span style="font-size:9.5px;text-transform:uppercase;color:var(--cg-light-gray);">${cell.type}</span>
+          </div>`;
+          
+      if (cell.type === "booked") {
+        html += `
+          <div style="font-size: 11px; color: var(--cg-light-gray); margin-bottom: 4px;">
+            Course: <strong style="color:var(--cg-white);">${cell.courseId}</strong><br>
+            Faculty: <span>${cell.instructor}</span>
+          </div>
+          <div class="sim-popover-actions">
+            <button class="block-btn" id="${prefix}ActionBlock">Block Room</button>
+            <button class="move-btn" id="${prefix}ActionDisplace">Displace Class</button>
+          </div>`;
+      } else if (cell.type === "vacant") {
+        html += `
+          <div style="font-size: 11px; color: var(--cg-light-gray); margin-bottom: 4px;">
+            This space is currently vacant.
+          </div>
+          <div class="sim-popover-actions">
+            <button class="block-btn" id="${prefix}ActionBlock">Block Room</button>
+          </div>`;
+      } else if (cell.type === "blocked") {
+        html += `
+          <div style="font-size: 11px; color: var(--cg-light-gray); margin-bottom: 4px;">
+            Blocked for maintenance/exams.
+          </div>
+          <div class="sim-popover-actions">
+            <button class="move-btn" id="${prefix}ActionUnblock" style="background:rgba(16,185,129,0.15);color:#34d399;border-color:rgba(16,185,129,0.25);">Unblock Room</button>
+          </div>`;
       }
-      simState.rooms[room][slot] = { type: "blocked", label: "Blocked", courseId: "", instructor: "" };
-      simState.selectedCell = null;
-      detailEl.style.display = "none";
-      showToast(`Blocked ${room} during ${slot.toUpperCase()}`);
-      syncAllSimViews();
-    });
-    
-    document.getElementById("simActionDisplace")?.addEventListener("click", () => {
-      const currentCell = simState.rooms[room][slot];
-      simState.unassigned.push({ courseId: currentCell.courseId, instructor: currentCell.instructor });
-      simState.rooms[room][slot] = { type: "vacant", label: "Vacant", courseId: "", instructor: "" };
-      simState.selectedCell = null;
-      detailEl.style.display = "none";
-      showToast(`Displaced ${currentCell.courseId} to unassigned queue`);
-      syncAllSimViews();
-    });
-    
-    document.getElementById("simActionUnblock")?.addEventListener("click", () => {
-      simState.rooms[room][slot] = { type: "vacant", label: "Vacant", courseId: "", instructor: "" };
-      simState.selectedCell = null;
-      detailEl.style.display = "none";
-      showToast(`Unblocked ${room} for ${slot.toUpperCase()}`);
-      syncAllSimViews();
-    });
+      
+      html += `</div>`;
+      el.innerHTML = html;
+      
+      document.getElementById(`${prefix}ActionBlock`)?.addEventListener("click", () => {
+        const currentCell = simState.rooms[room][slot];
+        if (currentCell.type === "booked") {
+          simState.unassigned.push({ courseId: currentCell.courseId, instructor: currentCell.instructor });
+        }
+        simState.rooms[room][slot] = { type: "blocked", label: "Blocked", courseId: "", instructor: "" };
+        simState.selectedCell = null;
+        if (detailEl) detailEl.style.display = "none";
+        if (scrollDetailEl) scrollDetailEl.style.display = "none";
+        showToast(`Blocked ${room} during ${slot.toUpperCase()}`);
+        syncAllSimViews();
+      });
+      
+      document.getElementById(`${prefix}ActionDisplace`)?.addEventListener("click", () => {
+        const currentCell = simState.rooms[room][slot];
+        simState.unassigned.push({ courseId: currentCell.courseId, instructor: currentCell.instructor });
+        simState.rooms[room][slot] = { type: "vacant", label: "Vacant", courseId: "", instructor: "" };
+        simState.selectedCell = null;
+        if (detailEl) detailEl.style.display = "none";
+        if (scrollDetailEl) scrollDetailEl.style.display = "none";
+        showToast(`Displaced ${currentCell.courseId} to unassigned queue`);
+        syncAllSimViews();
+      });
+      
+      document.getElementById(`${prefix}ActionUnblock`)?.addEventListener("click", () => {
+        simState.rooms[room][slot] = { type: "vacant", label: "Vacant", courseId: "", instructor: "" };
+        simState.selectedCell = null;
+        if (detailEl) detailEl.style.display = "none";
+        if (scrollDetailEl) scrollDetailEl.style.display = "none";
+        showToast(`Unblocked ${room} for ${slot.toUpperCase()}`);
+        syncAllSimViews();
+      });
+    };
+
+    populateDetail(detailEl, "sim");
+    populateDetail(scrollDetailEl, "scroll");
   }
-  
+
   function renderSimFaculty() {
-    const listEl = document.getElementById("simFacultyList");
+    renderFacultyList("simFacultyList", "sim");
+    renderFacultyList("scrollFacultyList", "scroll");
+  }
+
+  function renderFacultyList(listId, prefix) {
+    const listEl = document.getElementById(listId);
     if (!listEl) return;
     
     const facultyCourses = [];
@@ -5378,11 +5438,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     let html = "";
-    facultyCourses.forEach(c => {
+    facultyCourses.forEach((c, idx) => {
       const isVirtual = c.label.includes("(V)");
       const labelText = isVirtual ? "Virtual Delivery" : "In-Person Class";
       const badgeClass = isVirtual ? "teal" : "";
       const checkedAttr = isVirtual ? "checked" : "";
+      const inputId = `${prefix}-virtual-${c.room}-${c.slot}-${idx}`;
       
       html += `
         <div class="mock-faculty-card ${isVirtual ? 'virtual' : ''}">
@@ -5393,7 +5454,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
             <span class="mock-tag ${badgeClass}">${labelText}</span>
             <label class="sim-switch">
-              <input type="checkbox" class="virtual-toggle" data-room="${c.room}" data-slot="${c.slot}" ${checkedAttr}>
+              <input type="checkbox" class="virtual-toggle" id="${inputId}" data-room="${c.room}" data-slot="${c.slot}" ${checkedAttr}>
               <span class="sim-switch-label"></span>
             </label>
           </div>
@@ -5418,9 +5479,14 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
   }
-  
+
   function renderSimFacilities() {
-    const kanbanEl = document.getElementById("simFacilitiesKanban");
+    renderFacilitiesKanban("simFacilitiesKanban", "sim");
+    renderFacilitiesKanban("scrollFacilitiesKanban", "scroll");
+  }
+
+  function renderFacilitiesKanban(kanbanId, prefix) {
+    const kanbanEl = document.getElementById(kanbanId);
     if (!kanbanEl) return;
     
     const columns = {
@@ -5480,10 +5546,16 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
   }
-  
+
   function renderSimStudent() {
-    const timelineEl = document.getElementById("simStudentTimeline");
-    const noticesListEl = document.getElementById("simStudentNoticesList");
+    renderStudentTimeline("simStudentTimeline", "simStudentNoticesBox", "simStudentNoticesList");
+    renderStudentTimeline("scrollStudentTimeline", "scrollStudentNoticesBox", "scrollStudentNoticesList");
+  }
+
+  function renderStudentTimeline(timelineId, noticesBoxId, noticesListId) {
+    const timelineEl = document.getElementById(timelineId);
+    const noticesBoxEl = document.getElementById(noticesBoxId);
+    const noticesListEl = document.getElementById(noticesListId);
     
     if (!timelineEl || !noticesListEl) return;
     
@@ -5555,8 +5627,11 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>`;
     });
     noticesListEl.innerHTML = noticesHtml;
+    if (noticesBoxEl) {
+      noticesBoxEl.style.display = "block";
+    }
   }
-  
+
   function syncAllSimViews() {
     renderSimAdmin();
     renderSimFaculty();
@@ -5588,10 +5663,41 @@ document.addEventListener("DOMContentLoaded", () => {
         else if (targetId === "sim-student") previewSim.classList.add("glow-student");
       }
       
-      // Sync views upon tabs click to ensure latest state is shown
       syncAllSimViews();
     });
   });
+
+  // Bulk toggle button listener
+  const bulkToggleBtn = document.getElementById("simBulkToggleBtn");
+  const bulkNotice = document.getElementById("simBulkNotice");
+  if (bulkToggleBtn) {
+    bulkToggleBtn.addEventListener("click", () => {
+      if (simState.bulkExamActive) {
+        removeBulkExamBlock();
+        simState.bulkExamActive = false;
+        bulkToggleBtn.innerText = "Start Exam Period & Block";
+        if (bulkNotice) {
+          bulkNotice.innerText = "Exam period ended. Standard courses restored.";
+          bulkNotice.style.background = "rgba(16, 185, 129, 0.08)";
+          bulkNotice.style.borderColor = "rgba(16, 185, 129, 0.15)";
+          bulkNotice.style.color = "#34d399";
+        }
+        showToast("Restored all suspended courses and cleared exam blocks!");
+      } else {
+        applyBulkExamBlock();
+        simState.bulkExamActive = true;
+        bulkToggleBtn.innerText = "End Exam Period & Restore";
+        if (bulkNotice) {
+          bulkNotice.innerText = "Standard courses suspended. Exam block active.";
+          bulkNotice.style.background = "rgba(244, 63, 94, 0.08)";
+          bulkNotice.style.borderColor = "rgba(244, 63, 94, 0.15)";
+          bulkNotice.style.color = "#fb7185";
+        }
+        showToast("Suspended courses and blocked classrooms for exams!");
+      }
+      syncAllSimViews();
+    });
+  }
 
   // Initialize view sync initially
   syncAllSimViews();
