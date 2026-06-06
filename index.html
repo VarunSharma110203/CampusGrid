@@ -18,117 +18,252 @@
         <div class="landing-brand">
           <div class="brand-mark" id="loginBrandMark">CG</div>
           <div>
-            <strong id="loginUniName">UNIVERSITY OF BHARAT</strong>
-            <span>Class & Hall Operations</span>
+            <strong id="loginUniName">CAMPUSGRID</strong>
+            <span>Operational Timetabling Cockpit</span>
           </div>
         </div>
         <nav class="landing-nav">
-          <a href="#features">Features</a>
           <a href="#landingHero">Product</a>
-          <a href="#" onclick="startTour()">Product Tour</a>
+          <a href="#features">Portals</a>
+          <a href="#" onclick="startTour()">Interactive Tour</a>
         </nav>
         <div class="landing-actions">
-          <button class="btn sm" onclick="openLoginModal()" style="background: transparent; border: 1px solid var(--line-strong); color: var(--ink); font-weight: 600; padding: 6px 14px;">Sign In</button>
-          <button class="btn primary sm" onclick="openRegisterModal()" style="font-weight: 600; padding: 6px 14px;">Register University</button>
+          <button class="btn-landing secondary" onclick="openLoginModal()">Sign In</button>
+          <button class="btn-landing primary" onclick="openRegisterModal()">Setup Campus</button>
         </div>
       </header>
 
       <!-- Hero Section -->
       <section class="landing-hero" id="landingHero">
         <div class="hero-content">
-          <span class="badge">v1.0 Release</span>
-          <h1>One grid.<br>Every room.<br>Every slot.</h1>
-          <p>Replace sheets for 8 buildings, 200 teaching spaces, 15,000 students, and 500 faculty with live room visibility, request approvals, swaps, and daily operations.</p>
+          <span class="badge">v1.2 Release</span>
+          <h1>ONE GRID.<br>EVERY ROOM.<br>EVERY SLOT.</h1>
+          <p>Orchestrate lectures, faculty modes, and campus repairs from a single high-fidelity coordinate grid. Replace static spreadsheets with live, conflict-isolated timetabling.</p>
           <div class="hero-buttons">
-            <button class="btn primary lg" onclick="openRegisterModal()">Register Your University</button>
-            <button class="btn lg" onclick="openLoginModal()" style="background: white; border: 1px solid var(--line-strong);">Explore Demo Cockpit</button>
+            <button class="btn-landing primary" onclick="openRegisterModal()">Setup Your Campus</button>
+            <button class="btn-landing secondary" onclick="openLoginModal()">Explore Sandbox</button>
+            <a href="#" class="hero-tour-link" onclick="startTour(); return false;">
+              Take Tour <span style="font-size: 14px;">&rarr;</span>
+            </a>
           </div>
         </div>
+        
         <div class="hero-visual">
-          <!-- Preview of the cockpit -->
-          <div class="visual-card">
-            <div class="visual-header">
-              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-              <span class="visual-title">CampusGrid Schedule Cockpit</span>
+          <!-- Interactive Preview Simulator -->
+          <div class="preview-simulator glow-admin" id="previewSimulator">
+            <div class="simulator-header">
+              <div class="dots">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              </div>
+              <div class="url-bar">campusgrid.edu/cockpit</div>
+              <div style="width: 38px;"></div>
             </div>
-            <div class="visual-body">
-              <div class="grid-mock">
-                <div class="grid-mock-row head"><span>Room</span><span>Slot 1</span><span>Slot 2</span><span>Slot 3</span></div>
-                <div class="grid-mock-row"><strong>A-101</strong><span class="booked">CS101 (Faculty)</span><span class="vacant">Vacant</span><span class="booked">ME201</span></div>
-                <div class="grid-mock-row"><strong>C-201</strong><span class="vacant">Vacant</span><span class="blocked">Exam Block</span><span class="vacant">Vacant</span></div>
-                <div class="grid-mock-row"><strong>D-LAB</strong><span class="booked">CS302 (Lab)</span><span class="booked">CS302 (Lab)</span><span class="vacant">Vacant</span></div>
+            
+            <!-- Persona Tab Selector -->
+            <div class="simulator-tabs">
+              <button class="sim-tab-btn active" data-target="sim-admin">Admin Cockpit</button>
+              <button class="sim-tab-btn" data-target="sim-faculty">Faculty Portal</button>
+              <button class="sim-tab-btn" data-target="sim-facilities">Facilities Kanban</button>
+              <button class="sim-tab-btn" data-target="sim-student">Student Timeline</button>
+            </div>
+            
+            <div class="simulator-body">
+              <!-- Admin Grid Mock -->
+              <div class="sim-screen active" id="sim-admin">
+                <div class="mock-alert-bar" id="simAdminAlertBar" style="display: none;"></div>
+                <div class="mock-grid" id="simAdminGrid"></div>
+                <div id="simAdminDetailCard" style="display: none;"></div>
+                <div class="sim-unassigned-box" id="simAdminUnassignedBox" style="display: none; margin-top: 16px;">
+                  <div class="sim-unassigned-title">Displaced Classes (Click to Reassign)</div>
+                  <div class="sim-unassigned-list" id="simAdminUnassignedList"></div>
+                </div>
+              </div>
+              
+              <!-- Faculty Mock -->
+              <div class="sim-screen" id="sim-faculty">
+                <div class="mock-faculty-list" id="simFacultyList"></div>
+              </div>
+              
+              <!-- Facilities Mock -->
+              <div class="sim-screen" id="sim-facilities">
+                <div class="mock-kanban" id="simFacilitiesKanban"></div>
+              </div>
+              
+              <!-- Student Mock -->
+              <div class="sim-screen" id="sim-student">
+                <div class="mock-timeline" style="margin-bottom: 16px;" id="simStudentTimeline"></div>
+                <div class="sim-unassigned-box" id="simStudentNoticesBox">
+                  <div class="sim-unassigned-title">Today's Timeline Notices</div>
+                  <div class="mock-faculty-list" id="simStudentNoticesList" style="gap: 8px;"></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Features Section -->
-      <section class="landing-features" id="features">
-        <div class="features-header">
-          <h2>Tailored Portals for Every Campus Persona</h2>
-          <p>Designed for administrators, teachers, maintenance personnel, and students.</p>
-        </div>
-        <div class="features-grid">
-          <div class="feature-card">
-            <div class="icon">⚙️</div>
-            <h3>Administrators</h3>
-            <p>Schedule new course patterns, run bulk room blocks for exams, manage rosters, and approve swap requests instantly.</p>
+      <!-- Stats Bar -->
+      <section class="landing-stats">
+        <div class="stats-grid">
+          <div class="stat-item">
+            <strong>99.9%</strong>
+            <span>Room Efficiency</span>
           </div>
-          <div class="feature-card">
-            <div class="icon">👨‍🏫</div>
-            <h3>Faculty</h3>
-            <p>View daily teaching calendars, flag classes as virtual, or cancel slots. Freed classrooms are automatically returned to the pool.</p>
+          <div class="stat-item">
+            <strong>&lt; 2 min</strong>
+            <span>Clash Resolution</span>
           </div>
-          <div class="feature-card">
-            <div class="icon">🔧</div>
-            <h3>Facilities</h3>
-            <p>Log maintenance issues, request classroom blockages for repairs, and track repair tasks on a live status kanban board.</p>
+          <div class="stat-item">
+            <strong>15k+</strong>
+            <span>Active Profiles</span>
           </div>
-          <div class="feature-card">
-            <div class="icon">🎓</div>
-            <h3>Students</h3>
-            <p>Access real-time personalized schedules showing room changes, exam blocks, or class delivery updates dynamically.</p>
+          <div class="stat-item">
+            <strong>100%</strong>
+            <span>Cloud Isolated</span>
           </div>
         </div>
       </section>
+
+      <!-- Portals & Features Section -->
+      <section class="landing-features" id="features">
+        <div class="features-header">
+          <h2>Campus Portals Designed for Operators</h2>
+          <p>Four interconnected spaces working in perfect sync to eliminate scheduling friction.</p>
+        </div>
+        <div class="features-grid">
+          <div class="feature-card" data-accent="admin">
+            <div class="icon">⚙️</div>
+            <h3>Admin Cockpit</h3>
+            <p>Coordinate rooms, resolve overlaps, block areas for exams, and manage multi-tenant user directories from one live matrix.</p>
+          </div>
+          <div class="feature-card" data-accent="faculty">
+            <div class="icon">👨‍🏫</div>
+            <h3>Faculty Portal</h3>
+            <p>Access daily teaching calendars, swap slots with colleagues, flag lectures as virtual, or log immediate classroom maintenance tickets.</p>
+          </div>
+          <div class="feature-card" data-accent="facilities">
+            <div class="icon">🔧</div>
+            <h3>Facilities Hub</h3>
+            <p>Receive maintenance requests instantly, block damaged classrooms dynamically, and update repair statuses on a live Kanban board.</p>
+          </div>
+          <div class="feature-card" data-accent="student">
+            <div class="icon">🎓</div>
+            <h3>Student Dashboard</h3>
+            <p>Access live daily timelines showing precise locations, instructor details, virtual lecture link redirects, and sudden room changes.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Premium Cinematic Footer -->
+      <footer class="landing-footer">
+        <div class="footer-content">
+          <div class="footer-brand">
+            <div class="logo">
+              <span class="logo-mark">CG</span>
+              <span>CAMPUSGRID</span>
+            </div>
+            <p>Next-generation campus operations &amp; spatial timetabling.</p>
+          </div>
+          <div class="footer-links">
+            <div class="footer-col">
+              <h6>Product</h6>
+              <a href="#landingHero">Scheduling Grid</a>
+              <a href="#features">Persona Portals</a>
+              <a href="#" onclick="startTour(); return false;">Interactive Tour</a>
+            </div>
+            <div class="footer-col">
+              <h6>Enterprise</h6>
+              <a href="#" onclick="openRegisterModal(); return false;">Deploy Campus</a>
+              <a href="#" onclick="openLoginModal(); return false;">Client Gateway</a>
+              <a href="mailto:support@campusgrid.edu">Operator Support</a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <span>&copy; 2026 CampusGrid Systems Inc. All rights reserved.</span>
+          <span>Designed with premium security and isolation protocols.</span>
+        </div>
+      </footer>
     </section>
 
     <!-- Sign In Modal -->
     <div class="modal-backdrop hidden" id="loginModal">
-      <section class="modal" style="width: 440px; padding: 24px; max-height: 95vh; overflow-y: auto;">
-        <button class="modal-close" onclick="closeLoginModal()" aria-label="Close">x</button>
+      <section class="modal" style="width: 440px; padding: 28px; max-height: 95vh; overflow-y: auto;">
+        <button class="modal-close" onclick="closeLoginModal()" aria-label="Close">✕</button>
+        
         <!-- Sign In Panel -->
         <div class="login-panel" id="signInPanel">
-          <div>
-            <p class="eyebrow">Sign in</p>
-            <h2 style="margin-top: 4px;">Welcome back</h2>
-            <p class="helper">Pick a role below to open the right workspace.</p>
+          <div style="margin-bottom: 20px;">
+            <p class="eyebrow" style="color: var(--cg-light-gray); font-size: 11px; letter-spacing: 1px;">Access Portal</p>
+            <h2 style="margin-top: 4px; font-weight: 800; font-size: 24px; color: var(--cg-white); letter-spacing: -0.5px;">Welcome to CampusGrid</h2>
           </div>
-          <!-- Mode Selector -->
-          <div style="margin: 8px 0; background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
-            <span class="eyebrow" style="font-size: 9.5px; letter-spacing: 0.5px; color: var(--text-muted);">Application Mode</span>
-            <div class="segmented" style="display: flex; gap: 4px; width: 100%;">
-              <button type="button" class="active" id="modeOfflineBtn" style="flex: 1; padding: 6px; font-size: 11px; font-weight: 600;">Offline Demo</button>
-              <button type="button" id="modeFirebaseBtn" style="flex: 1; padding: 6px; font-size: 11px; font-weight: 600;">Firebase Live</button>
+          
+          <!-- Mode Selector Segmented Pill -->
+          <div class="login-mode-container">
+            <button type="button" class="login-mode-btn active" id="modeOfflineBtn">Sandbox Sandbox</button>
+            <button type="button" class="login-mode-btn" id="modeFirebaseBtn">Cloud Production</button>
+          </div>
+
+          <!-- Sandbox Content -->
+          <div class="demo-only-content">
+            <p style="font-size: 13px; color: var(--cg-light-gray); line-height: 1.5; margin: 0 0 16px;">
+              Select a simulation role to immediately launch into a pre-populated local database workspace.
+            </p>
+            <div class="login-role-grid">
+              <button class="login-role active" data-login-role="admin">
+                <span>Admin</span>
+                <strong>Super Cockpit</strong>
+              </button>
+              <button class="login-role" data-login-role="faculty">
+                <span>Faculty</span>
+                <strong>Teaching Console</strong>
+              </button>
+              <button class="login-role" data-login-role="facilities">
+                <span>Facilities</span>
+                <strong>Ops Kanban</strong>
+              </button>
+              <button class="login-role" data-login-role="student">
+                <span>Student</span>
+                <strong>Timeline view</strong>
+              </button>
             </div>
-            <div style="font-size: 10.5px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; margin-top: 2px;">
-              <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #94a3b8;" id="firebaseIndicator"></span>
-              <span id="firebaseStatusText">Firebase not configured (offline fallback).</span>
+          </div>
+
+          <!-- Production Content -->
+          <div class="prod-only-content" style="display: none;">
+            <p style="font-size: 13px; color: var(--cg-light-gray); line-height: 1.5; margin: 0 0 20px;">
+              Sign in using your institutional email key. Your database connection remains isolated.
+            </p>
+            
+            <div class="connection-status-strip" style="margin-bottom: 20px;">
+              <span class="indicator-dot" id="firebaseIndicator" style="background: #94a3b8;"></span>
+              <span id="firebaseStatusText" style="font-weight: 600;">Checking connection...</span>
             </div>
           </div>
-          <div class="login-role-grid">
-            <button class="login-role active" data-login-role="admin"><span>Admin</span><strong>Timetabling cockpit</strong></button>
-            <button class="login-role" data-login-role="faculty"><span>Faculty</span><strong>Teaching & requests</strong></button>
-            <button class="login-role" data-login-role="facilities"><span>Facilities</span><strong>Issues & maintenance</strong></button>
-            <button class="login-role" data-login-role="student"><span>Student</span><strong>Today’s schedule</strong></button>
+
+          <!-- Input Fields (Visible in Production mode, synced in sandbox) -->
+          <div class="prod-only-content" style="display: none;">
+            <label class="field">
+              <span>University Email</span>
+              <input id="loginEmail" autocomplete="username" placeholder="name@univ.edu" />
+            </label>
+            <label class="field">
+              <span>Secure Password</span>
+              <input type="password" id="loginPassword" autocomplete="current-password" placeholder="••••••••" />
+            </label>
           </div>
-          <label class="field"><span>Email</span><input id="loginEmail" autocomplete="username" /></label>
-          <label class="field"><span>Password</span><input type="password" id="loginPassword" autocomplete="current-password" /></label>
+          
+          <!-- Hiddens to satisfy app.js queries in sandbox mode -->
+          <div class="demo-only-content" style="display: none;">
+            <input id="loginEmailSandbox" style="display:none;" />
+            <input type="password" id="loginPasswordSandbox" style="display:none;" />
+          </div>
+
           <button class="btn primary login-submit" id="loginSubmit">Sign in</button>
-          <p class="helper" style="display:flex; justify-content:space-between; margin-top:10px; margin-bottom: 0;">
-            <span>Demo accounts auto-fill.</span>
-            <a href="#" onclick="openRegisterModal(); return false;" style="color: var(--primary); font-weight:600; text-decoration:none;">Register University</a>
+          
+          <p class="helper" style="display:flex; justify-content:space-between; margin-top: 20px; margin-bottom: 0; font-size: 12.5px;">
+            <span style="color: var(--cg-light-gray);">Demo profiles auto-authenticate.</span>
+            <a href="#" onclick="openRegisterModal(); return false;" style="color: var(--cg-white); font-weight: 700; text-decoration: none;">Setup University</a>
           </p>
         </div>
       </section>
@@ -136,25 +271,42 @@
 
     <!-- Register University Modal -->
     <div class="modal-backdrop hidden" id="registerModal">
-      <section class="modal" style="width: 480px; padding: 24px; max-height: 95vh; overflow-y: auto;">
-        <button class="modal-close" onclick="closeRegisterModal()" aria-label="Close">x</button>
+      <section class="modal" style="width: 480px; padding: 28px; max-height: 95vh; overflow-y: auto;">
+        <button class="modal-close" onclick="closeRegisterModal()" aria-label="Close">✕</button>
         <!-- Register University Panel -->
         <div class="login-panel" id="registerPanel">
-          <div>
-            <p class="eyebrow">Setup Institution</p>
-            <h2 style="margin-top: 4px;">Register University</h2>
-            <p class="helper">Set up your portal branding and admin account.</p>
+          <div style="margin-bottom: 24px;">
+            <p class="eyebrow" style="color: var(--cg-light-gray); font-size: 11px; letter-spacing: 1px;">Branding Config</p>
+            <h2 style="margin-top: 4px; font-weight: 800; font-size: 24px; color: var(--cg-white); letter-spacing: -0.5px;">Register Institution</h2>
+            <p style="font-size: 13px; color: var(--cg-light-gray); margin-top: 4px; line-height: 1.5;">Establish an isolated tenant database for your campus spaces.</p>
           </div>
-          <label class="field"><span>University Full Name</span><input id="regUniName" placeholder="e.g. University of Delhi" /></label>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <label class="field"><span>Sidebar Short Name</span><input id="regUniShort" placeholder="e.g. DELHI UNIV" /></label>
-            <label class="field"><span>Branding Code</span><input id="regUniCode" placeholder="e.g. UD" maxlength="3" /></label>
+          
+          <label class="field">
+            <span>University Full Name</span>
+            <input id="regUniName" placeholder="e.g. University of Bharat" />
+          </label>
+          <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px;">
+            <label class="field">
+              <span>Short Title (Sidebar)</span>
+              <input id="regUniShort" placeholder="e.g. BHARAT UNIV" />
+            </label>
+            <label class="field">
+              <span>Logo Code</span>
+              <input id="regUniCode" placeholder="e.g. UOB" maxlength="3" />
+            </label>
           </div>
-          <label class="field"><span>Admin Email</span><input id="regAdminEmail" placeholder="admin@univ.edu" autocomplete="username" /></label>
-          <label class="field"><span>Admin Password</span><input type="password" id="regAdminPassword" autocomplete="new-password" /></label>
-          <button class="btn primary" id="registerSubmit">Create Portal &amp; Account</button>
-          <p class="helper" style="text-align: center; margin-top: 10px; margin-bottom: 0;">
-            <a href="#" onclick="openLoginModal(); return false;" style="color: var(--primary); font-weight:600; text-decoration:none;">&larr; Back to Sign In</a>
+          <label class="field">
+            <span>Admin Email</span>
+            <input id="regAdminEmail" placeholder="admin@univ.edu" autocomplete="username" />
+          </label>
+          <label class="field">
+            <span>Master Password</span>
+            <input type="password" id="regAdminPassword" autocomplete="new-password" placeholder="••••••••" />
+          </label>
+          <button class="btn primary" id="registerSubmit">Register &amp; Provision Tenant &rarr;</button>
+          
+          <p class="helper" style="text-align: center; margin-top: 20px; margin-bottom: 0; font-size: 12.5px;">
+            <a href="#" onclick="openLoginModal(); return false;" style="color: var(--cg-light-gray); font-weight: 600; text-decoration: none;">&larr; Back to Access Portal</a>
           </p>
         </div>
       </section>
