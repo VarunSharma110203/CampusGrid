@@ -236,15 +236,28 @@ function renderTourStep() {
 }
 
 
+const defaultSystemDate = (localStorage.getItem("campusgrid_mode") || "offline") === "firebase" 
+  ? new Date().toISOString().split('T')[0] 
+  : "2026-05-26";
+
 // Global State
 const state = {
-  currentDate: "2026-05-26", // Default system date — Monday
+  currentDate: defaultSystemDate, // Default system date context
   currentRole: "admin",      // Active RBAC role
   selectedCell: null,        // Selected grid cell coordinates
   modalStep: 1,              // Wizard step pointer
   selectedRequestId: null,   // Selected request in approvals queue
   selectedUnassignedId: null,// Selected unassigned class
   selectedIssueId: "ISS-01",  // Active facilities issue card
+  university: null,          // University branding config
+  currentUserProfile: null,  // Active logged-in user profile
+  users: [                   // Roster database
+    { email: "admin@univ.edu", name: "Varun Sharma (Admin)", role: "admin", roles: ["admin"] },
+    { email: "faculty@univ.edu", name: "Dr. Ananya Mehta", role: "faculty", roles: ["faculty"], taughtCourses: ["CS101", "CS102", "CS201-L"] },
+    { email: "facilities@univ.edu", name: "Harpreet Singh", role: "facilities", roles: ["facilities"] },
+    { email: "student@univ.edu", name: "Rahul Verma", role: "student", roles: ["student"], enrolledCourses: ["CS101", "MA201", "PHY204-L"] }
+  ],
+
   
   // Suspended classes during an Exam Period block
   // { [date]: [{ title, faculty, count, courseId, requirements, originalRoom, originalSlot }] }
@@ -505,12 +518,12 @@ const state = {
 
 // Slots definition
 const slotTimes = [
-  { name: "SLOT 1", time: "9-10" },
-  { name: "SLOT 2", time: "10-11" },
-  { name: "SLOT 3", time: "11-12" },
-  { name: "SLOT 4", time: "1-2" },
-  { name: "SLOT 5", time: "2-3" },
-  { name: "SLOT 6", time: "3-4" }
+  { name: "SLOT 1", time: "09:00 AM - 10:00 AM", startTime: "09:00", endTime: "10:00" },
+  { name: "SLOT 2", time: "10:00 AM - 11:00 AM", startTime: "10:00", endTime: "11:00" },
+  { name: "SLOT 3", time: "11:00 AM - 12:00 PM", startTime: "11:00", endTime: "12:00" },
+  { name: "SLOT 4", time: "01:00 PM - 02:00 PM", startTime: "13:00", endTime: "14:00" },
+  { name: "SLOT 5", time: "02:00 PM - 03:00 PM", startTime: "14:00", endTime: "15:00" },
+  { name: "SLOT 6", time: "03:00 PM - 04:00 PM", startTime: "15:00", endTime: "16:00" }
 ];
 
 // Helper Functions
@@ -544,6 +557,7 @@ function addSystemNotification(message) {
 function renderBellNotifications() {
   const list = $("#bellNotificationsList");
   const badge = $("#bellBadge");
+  if (!list || !badge) return;
   
   if (state.notifications.length > 0) {
     badge.textContent = state.notifications.length;
@@ -1052,6 +1066,8 @@ function doAssignToSlot(courseId) {
   
   addSystemNotification(`Assigned ${classObj.title} to Room ${roomId} Slot ${slot}.`);
   showToast(`Placed ${classObj.title} in Room ${roomId} Slot ${slot}.`);
+  saveState('cellData', state.currentDate);
+  saveState('unassignedClasses', state.currentDate);
   renderScheduleGrid();
   renderDetailsPanel();
 }
@@ -1065,6 +1081,7 @@ window.unblockSelectedSlot = function() {
   
   addSystemNotification(`Room ${roomId} Block released for Slot ${slot}.`);
   showToast(`Released room block for room ${roomId}.`);
+  saveState('cellData', state.currentDate);
   renderScheduleGrid();
   renderDetailsPanel();
 };
@@ -1091,6 +1108,8 @@ window.unassignSelectedSlot = function() {
   delete state.cellData[state.currentDate][key];
   addSystemNotification(`Class unassigned: ${cell.title} removed from Room ${roomId} Slot ${slot}. Now in unassigned queue — ready to be placed.`);
   showToast(`${cell.title} moved to unassigned queue. Room ${roomId} is now vacant.`);
+  saveState('cellData', state.currentDate);
+  saveState('unassignedClasses', state.currentDate);
   renderScheduleGrid();
   renderDetailsPanel();
 };
@@ -1118,6 +1137,8 @@ window.markSelectedClassVirtual = function() {
     }
   }
   
+  saveState('cellData', state.currentDate);
+  saveState('approvalRequests');
   renderScheduleGrid();
   renderDetailsPanel();
 };
@@ -1172,6 +1193,7 @@ window.submitRoomBlock = function() {
   addSystemNotification(`Blocked room ${roomId} Slot ${slot} for ${type}.`);
   showToast(`Blocked room ${roomId} Slot ${slot}.`);
   closeModal();
+  saveState('cellData', state.currentDate);
   renderScheduleGrid();
   renderDetailsPanel();
 };
@@ -1405,6 +1427,7 @@ window.moveClassDirectly = function(targetRoomId) {
   addSystemNotification(`Relocated class: ${cell.title} from Room ${roomId} to vacant Room ${targetRoomId} (Slot ${slot}).`);
   showToast(`Moved ${cell.title} to room ${targetRoomId}.`);
   closeModal();
+  saveState('cellData', state.currentDate);
   renderScheduleGrid();
   renderDetailsPanel();
 };
@@ -1441,6 +1464,7 @@ window.executeSwap = function() {
   addSystemNotification(`Swapped rooms between ${sourceClass.title} (now Room ${targetRoomId}) and ${targetClass.title} (now Room ${sourceRoomId}) in Slot ${slot}.`);
   showToast("Swap confirmed. Notification center updated.");
   closeModal();
+  saveState('cellData', state.currentDate);
   renderScheduleGrid();
   renderDetailsPanel();
   
@@ -1597,6 +1621,7 @@ window.rejectRequest = function(reqId) {
   
   addSystemNotification(`Rejected request ${req.title} from ${req.faculty}.`);
   showToast("Request rejected.");
+  saveState('approvalRequests');
   renderRequestsScreen();
   renderScheduleGrid();
 };
@@ -1660,33 +1685,104 @@ window.approveRequest = function(reqId) {
   state.selectedRequestId = state.approvalRequests[0]?.id || null;
   
   showToast("Request approved successfully.");
+  saveState('cellData', req.date);
+  saveState('unassignedClasses', req.date);
+  saveState('approvalRequests');
+  saveState('issues');
   renderRequestsScreen();
   renderScheduleGrid();
 };
 
 // Faculty Home rendering & actions (Screen D)
+function renderFacultyAlerts(facultyCourses) {
+  const alertStrip = $("#facultyAlertStrip");
+  if (!alertStrip) return;
+  
+  const userProfile = state.currentUserProfile;
+  if (!userProfile) return;
+
+  const classCount = facultyCourses.length;
+  const pendingRequests = state.approvalRequests.filter(r => 
+    r.facultyEmail === userProfile.email && r.status === "pending"
+  ).length;
+  
+  // Find next class chronologically
+  const nowHour = new Date().getHours();
+  const activeClasses = facultyCourses.filter(c => c.status !== "cancelled");
+  let nextClassText = "No more classes today";
+  if (activeClasses.length > 0) {
+    const nextClass = activeClasses.find(c => {
+      const timeStr = c.time || "";
+      const startHour = parseInt(timeStr.split("-")[0]) || 0;
+      return startHour > nowHour;
+    }) || activeClasses[0];
+    nextClassText = `Next: ${nextClass.title} in Room ${nextClass.room} (Slot ${nextClass.slot})`;
+  }
+
+  alertStrip.innerHTML = `
+    <button class="alert-pill">${classCount} class${classCount === 1 ? "" : "es"} today</button>
+    <button class="alert-pill warning">${pendingRequests} request${pendingRequests === 1 ? "" : "s"} pending</button>
+    <button class="alert-pill">${nextClassText}</button>
+  `;
+}
+
 function renderFacultyHome() {
   const container = $("#facultyCardsContainer");
   if (!container) return;
 
+  const userProfile = state.currentUserProfile;
+  if (!userProfile) {
+    container.innerHTML = `
+      <div style="text-align:center; padding: 48px; border: 1px dashed var(--line-strong); border-radius: var(--radius); color: var(--text-muted);">
+        <p>Please sign in to view your schedule.</p>
+      </div>`;
+    return;
+  }
+
   const daySchedule = state.cellData[state.currentDate] || {};
-  const activeFaculty = "Dr. Ananya Mehta"; // The demo active user
   
+  const isFacultyClass = (cell) => {
+    if (!cell) return false;
+    // 1. Match by email
+    if (cell.facultyEmail && userProfile.email && cell.facultyEmail.trim().toLowerCase() === userProfile.email.trim().toLowerCase()) {
+      return true;
+    }
+    // 2. Match by exact name
+    if (cell.faculty && userProfile.name && cell.faculty.trim().toLowerCase() === userProfile.name.trim().toLowerCase()) {
+      return true;
+    }
+    // 3. Fallback: match by taughtCourses
+    if (userProfile.taughtCourses && Array.isArray(userProfile.taughtCourses)) {
+      const baseId = cell.courseId ? cell.courseId.split('-')[0].toLowerCase() : "";
+      const lowerTaught = userProfile.taughtCourses.map(c => c.trim().toLowerCase());
+      if (lowerTaught.includes(baseId)) {
+        return true;
+      }
+    }
+    // 4. Fallback: name contains their last name
+    if (cell.faculty && userProfile.name) {
+      const lastName = userProfile.name.split(" ").pop();
+      if (lastName && lastName.length > 2 && cell.faculty.toLowerCase().includes(lastName.toLowerCase())) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   // Extract all courses belonging to this faculty on the current day
   const facultyCourses = [];
   for (let key in daySchedule) {
     const cell = daySchedule[key];
-    if (cell && cell.faculty && cell.faculty.includes("Mehta")) {
+    if (isFacultyClass(cell)) {
       const parts = key.split("-");
-      const room = parts[0] + "-" + parts[1];
-      const slot = parts[2];
+      const room = parts.slice(0, parts.length - 1).join("-");
+      const slot = parts[parts.length - 1];
       facultyCourses.push({ key, room, slot, ...cell });
     }
   }
 
-  // Also manually inject CS101 or Guest Talk if they were forced into virtual/cancelled
-  // so we don't lose them if they are the exact mock test cases from the user's run.
-  // Actually, now that we use status flags, they will remain in `cellData`!
+  // Render dynamic alert strip
+  renderFacultyAlerts(facultyCourses);
 
   if (facultyCourses.length === 0) {
     container.innerHTML = `
@@ -1750,10 +1846,15 @@ window.facultyMarkVirtual = function(targetKey) {
     daySchedule[targetKey].status = "virtual"; // Changed from delete to flag
   }
   
-  addSystemNotification(`Dr. Ananya Mehta marked a class virtual. Room is released.`);
+  const profName = state.currentUserProfile?.name || "Faculty";
+  addSystemNotification(`${profName} marked a class virtual. Room is released.`);
   showToast("Class delivery set to virtual. Room is released instantly.");
   renderFacultyHome();
   if (state.currentRole === "admin") renderScheduleGrid();
+  
+  if (currentAppMode === 'firebase' && isFirebaseInitialized) {
+    saveState('cellData', state.currentDate);
+  }
 };
 
 window.facultyCancelEvent = function(targetKey) {
@@ -1763,10 +1864,15 @@ window.facultyCancelEvent = function(targetKey) {
     daySchedule[targetKey].status = "cancelled"; // Changed from delete to flag
   }
   
-  addSystemNotification(`A class was cancelled by Faculty.`);
+  const profName = state.currentUserProfile?.name || "Faculty";
+  addSystemNotification(`A class was cancelled by ${profName}.`);
   showToast("Class cancelled. Room is released instantly.");
   renderFacultyHome();
   if (state.currentRole === "admin") renderScheduleGrid();
+  
+  if (currentAppMode === 'firebase' && isFirebaseInitialized) {
+    saveState('cellData', state.currentDate);
+  }
 };
 
 // Open Faculty Request Modal
@@ -2059,6 +2165,20 @@ window.submitAdminDispatchIssue = function() {
 function renderFacilitiesScreen() {
   const opsList = $(".ops-list");
   if (!opsList) return;
+
+  // Render facilities alert strip
+  const alertStrip = $("#facilitiesAlertStrip");
+  if (alertStrip) {
+    const activeIssues = state.issues.filter(i => i.status === "Reported" || i.status === "Pending Block").length;
+    const blocksAwaitingAdmin = state.approvalRequests.filter(r => r.type === "maintenance" && r.status === "pending").length;
+    const totalRooms = getFlatRooms().length;
+    
+    alertStrip.innerHTML = `
+      <button class="alert-pill danger">${activeIssues} active issue${activeIssues === 1 ? "" : "s"}</button>
+      <button class="alert-pill warning">${blocksAwaitingAdmin} block request${blocksAwaitingAdmin === 1 ? "" : "s"} pending</button>
+      <button class="alert-pill">${totalRooms} classrooms operational</button>
+    `;
+  }
   
   // Render facilities inbox issue logs
   const inbox = $("#facilitiesInboxList") || $(".table-card");
@@ -2288,6 +2408,55 @@ window.submitFacilitiesBlockRequest = function() {
 };
 
 // Student home screen logic (Screen F)
+function renderStudentNotices(classesToRender) {
+  const noticesContainer = $("#studentNoticesList");
+  if (!noticesContainer) return;
+  
+  let noticesHtml = "";
+  
+  // 1. Course exceptions (virtual / cancelled)
+  classesToRender.forEach(item => {
+    if (item.status === "virtual") {
+      noticesHtml += `
+        <div class="student-notice warning" style="padding: 12px; border-radius: 6px; background: var(--pending-bg); border: 1px solid var(--pending-border);">
+          <strong style="display: block; color: var(--pending); font-size: 14px; margin-bottom: 4px;">${item.course} has moved virtual today</strong>
+          <span style="font-size: 12px; color: var(--text-muted);">Updated by ${item.prof}. Room ${item.room} released.</span>
+        </div>
+      `;
+    } else if (item.status === "cancelled") {
+      noticesHtml += `
+        <div class="student-notice warning" style="padding: 12px; border-radius: 6px; background: var(--blocked-bg); border: 1px solid var(--blocked-border);">
+          <strong style="display: block; color: var(--blocked); font-size: 14px; margin-bottom: 4px;">${item.course} is cancelled today</strong>
+          <span style="font-size: 12px; color: var(--text-muted);">Slot ${item.slot} (${item.time}) cancellation.</span>
+        </div>
+      `;
+    }
+  });
+
+  // 2. System-wide announcements
+  const generalNotifs = state.notifications || [];
+  if (generalNotifs.length > 0) {
+    generalNotifs.slice(0, 3).forEach(notif => {
+      noticesHtml += `
+        <div class="student-notice" style="padding: 12px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line);">
+          <strong style="display: block; font-size: 14px; margin-bottom: 4px;">Announcement</strong>
+          <span style="font-size: 12px; color: var(--text-muted);">${notif.message} (${notif.time})</span>
+        </div>
+      `;
+    });
+  }
+
+  if (!noticesHtml) {
+    noticesHtml = `
+      <div style="text-align: center; color: var(--text-muted); font-size: 13px; padding: 12px;">
+        No active notices for today.
+      </div>
+    `;
+  }
+  
+  noticesContainer.innerHTML = noticesHtml;
+}
+
 function renderStudentHome() {
   const container = $("#studentTimelineContainer");
   if (!container) return;
@@ -2314,61 +2483,146 @@ function renderStudentHome() {
       <div style="text-align:center; padding: 48px; border: 1px dashed var(--line-strong); border-radius: var(--radius); color: var(--text-muted);">
         <p>No classes scheduled for today.</p>
       </div>`;
+    renderStudentNotices([]);
     return;
   }
   
-  // Normal Day logic
-  if (upNextBanner) {
-      upNextBanner.style.background = "linear-gradient(135deg, var(--booked) 0%, #1e3a8a 100%)";
-      upNextLabel.innerText = "Up Next";
-      upNextTitle.innerText = "CS101 Data Structures";
-      if (upNextMeta) upNextMeta.style.display = "flex";
+  const userProfile = state.currentUserProfile;
+  if (!userProfile) {
+    container.innerHTML = `
+      <div style="text-align:center; padding: 48px; border: 1px dashed var(--line-strong); border-radius: var(--radius); color: var(--text-muted);">
+        <p>Please sign in to view your schedule.</p>
+      </div>`;
+    return;
   }
 
   const daySchedule = state.cellData[state.currentDate] || {};
-  let html = "";
-  
-  // Hardcoded mapping representing a specific student's registered cohort pattern
-  const classesToRender = [
-    { slot: 1, time: "9:00 AM", course: "MA201 Linear Algebra", prof: "Prof. Suresh Iyer" },
-    { slot: 2, time: "10:00 AM", course: "CS101 Data Structures", prof: "Dr. Ananya Mehta" },
-    { slot: 3, time: "11:00 AM", course: "MA-T Tutorial: Probability", prof: "Prof. R. Subramanian" },
-    { slot: 4, time: "1:00 PM", course: "PHY Lab - Optics", prof: "Prof. Suresh Iyer" },
-    { slot: 5, time: "2:00 PM", course: "Guest Talk: Product in India", prof: "Prof. Rao" }
-  ];
-  
-  classesToRender.forEach((item, index) => {
-    let scheduledRoom = null;
-    let isVirtual = false;
-    let isCancelled = false;
-    let statusClass = index === 1 ? "var(--booked)" : "var(--text-muted)";
-    let bgStyle = index === 1 ? "border-color: var(--booked-border); background: var(--booked-bg);" : "";
-    let dotStyle = index === 1 ? "background: var(--booked); box-shadow: 0 0 0 3px var(--booked-border);" : (index === 0 ? "background: var(--line-strong);" : "background: white; border: 2px solid var(--line-strong);");
-    let opacityStyle = index === 0 ? "opacity: 0.6;" : "";
-    
-    for (let k in daySchedule) {
-      if (daySchedule[k].courseId && item.course.includes(daySchedule[k].courseId)) {
-        const parts = k.split("-");
-        scheduledRoom = parts[0] + "-" + parts[1];
-        if (daySchedule[k].status === "virtual") isVirtual = true;
-        if (daySchedule[k].status === "cancelled") isCancelled = true;
-        break;
+  const classesToRender = [];
+
+  const isEnrolled = (course) => {
+    if (!course) return false;
+    if (course.students && Array.isArray(course.students)) {
+      if (course.students.some(s => (s.email || "").trim().toLowerCase() === userProfile.email.toLowerCase())) {
+        return true;
       }
     }
+    if (userProfile.enrolledCourses && Array.isArray(userProfile.enrolledCourses)) {
+      const lowerEnrolled = userProfile.enrolledCourses.map(c => c.trim().toLowerCase());
+      if (lowerEnrolled.includes(course.id.toLowerCase())) return true;
+      const baseId = course.id.split('-')[0].toLowerCase();
+      if (lowerEnrolled.includes(baseId)) return true;
+    }
+    return false;
+  };
+
+  for (let key in daySchedule) {
+    const cell = daySchedule[key];
+    if (!cell || !cell.courseId) continue;
+
+    let courseObj = null;
+    for (const group of mockSlotGroups) {
+      courseObj = group.courses.find(c => c.id === cell.courseId);
+      if (courseObj) break;
+    }
+
+    let isStudentEnrolled = false;
+    if (courseObj) {
+      isStudentEnrolled = isEnrolled(courseObj);
+    } else {
+      if (userProfile.enrolledCourses && Array.isArray(userProfile.enrolledCourses)) {
+        const lowerEnrolled = userProfile.enrolledCourses.map(c => c.trim().toLowerCase());
+        const cellCourseBase = cell.courseId.split('-')[0].toLowerCase();
+        isStudentEnrolled = lowerEnrolled.some(ec => 
+          cellCourseBase.includes(ec) || cell.title.toLowerCase().includes(ec)
+        );
+      }
+    }
+
+    if (isStudentEnrolled) {
+      const parts = key.split("-");
+      const slotNum = parseInt(parts[parts.length - 1]);
+      const slotInfo = slotTimes[slotNum - 1] || { name: `Slot ${slotNum}`, time: "TBD" };
+      classesToRender.push({
+        slot: slotNum,
+        time: slotInfo.time || `${slotInfo.startTime} - ${slotInfo.endTime}`,
+        course: cell.title || (courseObj ? courseObj.title : cell.courseId.split('-')[0]),
+        courseId: cell.courseId,
+        prof: cell.faculty || "TBA",
+        room: parts.slice(0, parts.length - 1).join("-"),
+        status: cell.status || "booked",
+        cellKey: key,
+        cell: cell
+      });
+    }
+  }
+
+  // Sort chronologically by slot index
+  classesToRender.sort((a, b) => a.slot - b.slot);
+
+  if (classesToRender.length === 0) {
+    if (upNextBanner) {
+      upNextBanner.style.background = "linear-gradient(135deg, #10b981 0%, #047857 100%)";
+      upNextLabel.innerText = "Enjoy your day off!";
+      upNextTitle.innerText = "No classes scheduled";
+      if (upNextMeta) upNextMeta.style.display = "none";
+    }
     
-    // Default fallback if not found in grid (not mapped via builder for the demo)
-    if (!scheduledRoom) scheduledRoom = item.course.includes("CS101") ? "C-201" : (item.course.includes("PHY") ? "D-LAB-2" : "A-101");
-    if (item.course.includes("Guest")) scheduledRoom = "F-AUD-01";
+    container.innerHTML = `
+      <div style="text-align:center; padding: 48px; border: 1px dashed var(--line-strong); border-radius: var(--radius); color: var(--text-muted);">
+        <p>No classes scheduled for today.</p>
+      </div>`;
+    renderStudentNotices([]);
+    return;
+  }
 
-    if (isVirtual) scheduledRoom = "Virtual Delivery";
-    if (isCancelled) scheduledRoom = "Cancelled";
+  const upNextClass = classesToRender.find(c => c.status !== "cancelled") || classesToRender[0];
+  if (upNextBanner && upNextClass) {
+      upNextBanner.style.background = "linear-gradient(135deg, var(--booked) 0%, #1e3a8a 100%)";
+      upNextLabel.innerText = "Up Next";
+      upNextTitle.innerText = upNextClass.course;
+      if (upNextMeta) {
+        upNextMeta.style.display = "flex";
+        upNextMeta.innerHTML = `
+          <div style="display:flex; align-items:center; gap:6px; margin-right:16px;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span>Slot ${upNextClass.slot} (${upNextClass.time})</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>Room ${upNextClass.status === "virtual" ? "Virtual Delivery" : upNextClass.room}</span>
+          </div>
+        `;
+      }
+  }
 
-    if (isCancelled) {
-      statusClass = "var(--blocked)";
-      bgStyle = "border-color: var(--blocked-border); background: var(--blocked-bg);";
-    } else if (isVirtual) {
+  let html = "";
+  classesToRender.forEach((item, index) => {
+    let scheduledRoom = item.room;
+    let isVirtual = item.status === "virtual";
+    let isCancelled = item.status === "cancelled";
+    let statusClass = "var(--text-muted)";
+    let bgStyle = "";
+    let dotStyle = "background: white; border: 2px solid var(--line-strong);";
+    let opacityStyle = "";
+    
+    if (item === upNextClass) {
+      statusClass = "var(--booked)";
+      bgStyle = "border-color: var(--booked-border); background: var(--booked-bg);";
+      dotStyle = "background: var(--booked); box-shadow: 0 0 0 3px var(--booked-border);";
+    } else if (classesToRender.indexOf(item) < classesToRender.indexOf(upNextClass)) {
+      opacityStyle = "opacity: 0.6;";
+      dotStyle = "background: var(--line-strong);";
+    }
+    
+    if (isVirtual) {
+      scheduledRoom = "Virtual Delivery";
       statusClass = "var(--pending)";
       bgStyle = "border-color: var(--pending-border); background: var(--pending-bg);";
+    }
+    if (isCancelled) {
+      scheduledRoom = "Cancelled";
+      statusClass = "var(--blocked)";
+      bgStyle = "border-color: var(--blocked-border); background: var(--blocked-bg);";
     }
 
     html += `
@@ -2386,6 +2640,7 @@ function renderStudentHome() {
   });
   
   container.innerHTML = html;
+  renderStudentNotices(classesToRender);
 }
 
 // Room Directory rendering (Screen G)
@@ -2406,6 +2661,9 @@ function renderRoomsScreen() {
 window.setRole = function(role) {
   state.currentRole = role;
   document.body.className = `role-${role}`;
+  document.body.classList.remove('show-login');
+  if (typeof closeLoginModal === 'function') closeLoginModal();
+  if (typeof closeRegisterModal === 'function') closeRegisterModal();
 
   // Role-based nav: define which screens each persona can access
   const roleNav = {
@@ -2432,20 +2690,81 @@ window.setRole = function(role) {
   // Render profile card
   const profilePanel = $("#roleProfile");
   if (profilePanel) {
-    const profiles = {
-      admin:      ["AS", "Asha Sharma",      "Timetabling Admin"],
-      faculty:    ["AM", "Dr. Ananya Mehta", "Faculty &bull; CSE"],
-      facilities: ["RK", "R. Kulkarni",      "Facilities Manager"],
-      student:    ["AS", "Ananya Sharma",    "B.Tech CSE III Yr"]
-    };
-    const [initials, name, desc] = profiles[role] || profiles.admin;
+    let initials = "AS";
+    let name = "User";
+    let desc = "Timetabling Admin";
+    
+    if (currentAppMode === 'firebase' && state.currentUserProfile) {
+      name = state.currentUserProfile.name || name;
+      const roleStr = state.currentUserProfile.role || role;
+      desc = roleStr.toUpperCase();
+      if (roleStr === 'admin') desc = "Administrator";
+      else if (roleStr === 'faculty') desc = "Faculty";
+      else if (roleStr === 'facilities') desc = "Facilities";
+      else if (roleStr === 'student') desc = "Student";
+      
+      initials = name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+    } else {
+      const profiles = {
+        admin:      ["AS", "Asha Sharma",      "Timetabling Admin"],
+        faculty:    ["AM", "Dr. Ananya Mehta", "Faculty &bull; CSE"],
+        facilities: ["RK", "R. Kulkarni",      "Facilities Manager"],
+        student:    ["AS", "Ananya Sharma",    "B.Tech CSE III Yr"]
+      };
+      const [pInitials, pName, pDesc] = profiles[role] || profiles.admin;
+      initials = pInitials;
+      name = pName;
+      desc = pDesc;
+    }
+    
     profilePanel.innerHTML = `
       <div class="role-avatar-fallback">${initials}</div>
-      <div class="role-profile-details">
-        <strong>${name}</strong>
+      <div class="role-profile-details" style="flex: 1; min-width: 0;">
+        <strong style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${name}</strong>
         <span>${desc}</span>
       </div>
+      <button onclick="openChangePasswordModal()" style="background: none; border: none; font-size: 16px; cursor: pointer; color: var(--text-muted); padding: 4px; display: flex; align-items: center; margin-right: 4px;" title="Change Password">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+      </button>
+      <button id="signOutBtn" style="background: none; border: none; font-size: 16px; cursor: pointer; color: var(--text-muted); padding: 4px; display: flex; align-items: center;" title="Sign Out">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+      </button>
     `;
+  }
+
+  // Update switcher controls dynamically
+  const switcher = document.querySelector('.role-switcher');
+  if (switcher) {
+    if (currentAppMode === 'firebase' && isFirebaseInitialized) {
+      const profile = state.currentUserProfile;
+      if (!profile) {
+        switcher.style.display = 'none';
+      } else {
+        const userRoles = profile.roles || [profile.role] || [];
+        if (userRoles.includes('admin')) {
+          switcher.style.display = '';
+          const chips = switcher.querySelectorAll('[data-role-target]');
+          chips.forEach(chip => {
+            chip.style.display = '';
+          });
+        } else if (userRoles.length > 1) {
+          switcher.style.display = '';
+          const chips = switcher.querySelectorAll('[data-role-target]');
+          chips.forEach(chip => {
+            const targetRole = chip.dataset.roleTarget;
+            chip.style.display = userRoles.includes(targetRole) ? '' : 'none';
+          });
+        } else {
+          switcher.style.display = 'none';
+        }
+      }
+    } else {
+      switcher.style.display = '';
+      const chips = switcher.querySelectorAll('[data-role-target]');
+      chips.forEach(chip => {
+        chip.style.display = '';
+      });
+    }
   }
 
   showToast(`Signed in as ${role.charAt(0).toUpperCase() + role.slice(1)}.`);
@@ -2453,6 +2772,7 @@ window.setRole = function(role) {
   // Re-render directory to update role-based controls
   renderDirectory();
 };
+
 
 // Page Screen Navigations
 window.showScreen = function(screenId) {
@@ -2503,7 +2823,7 @@ function renderDashboard() {
   const daySchedule = state.cellData[state.currentDate] || {};
   let booked = 0, blocked = 0, vacant = 0, pending = 0;
   const totalRooms = getFlatRooms().length;
-  const totalSlots = totalRooms * 6;
+  const totalSlots = totalRooms * slotTimes.length;
   for (let k in daySchedule) {
     const s = daySchedule[k].status;
     if (s === "booked") booked++;
@@ -2537,6 +2857,117 @@ function renderDashboard() {
       <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">approvals waiting</p>
     </article>
   `;
+
+  // Populate Needs Attention
+  const attentionContainer = $("#dashboardNeedsAttentionContainer");
+  if (attentionContainer) {
+    const cards = [];
+    
+    // Check pending approval requests
+    (state.approvalRequests || []).forEach(req => {
+      if (req.status === "Requested") {
+        cards.push(`
+          <div class="issue-card" style="border: 1px solid var(--pending-border); background: var(--pending-bg); padding: 12px; border-radius: var(--radius);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong style="color: var(--pending); font-size: 13px;">Faculty Request: ${req.title}</strong>
+              <span class="poi-status" style="background: var(--pending); color: white; font-size: 10px; padding: 2px 6px;">Review</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px; margin-bottom: 8px;">
+              ${req.faculty || "Faculty"} requested ${req.type || "Booking"} for ${req.date} (Slot ${req.slots ? req.slots.join(', ') : 'N/A'}).
+            </p>
+            <button class="btn sm" style="width: 100%; padding: 4px 8px; font-size: 11px;" onclick="showScreen('requests')">Go to Approvals Queue</button>
+          </div>
+        `);
+      }
+    });
+
+    // Check active issues
+    (state.issues || []).forEach(issue => {
+      if (issue.status === "Requested" || issue.status === "Block Requested") {
+        cards.push(`
+          <div class="issue-card" style="border: 1px solid var(--blocked-border); background: var(--blocked-bg); padding: 12px; border-radius: var(--radius);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong style="color: var(--blocked); font-size: 13px;">Room Issue: ${issue.room}</strong>
+              <span class="poi-status" style="background: var(--blocked); color: white; font-size: 10px; padding: 2px 6px;">Resolve</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px; margin-bottom: 8px;">
+              Reported by ${issue.reportedBy || "Staff"}: ${issue.description}
+            </p>
+            <button class="btn sm" style="width: 100%; padding: 4px 8px; font-size: 11px;" onclick="showScreen('facilities')">Go to Maintenance Kanban</button>
+          </div>
+        `);
+      }
+    });
+
+    // Check double-booking conflicts in cellData
+    const schedule = state.cellData[state.currentDate] || {};
+    const slotRoomCount = {};
+    for (let key in schedule) {
+      if (schedule[key] && (schedule[key].status === "booked" || schedule[key].status === "blocked")) {
+        // key format is Room-SlotIndex
+        const parts = key.split('-');
+        if (parts.length >= 2) {
+          const room = parts[0];
+          const slot = parts[1];
+          const slotKey = `${room}-${slot}`;
+          slotRoomCount[slotKey] = slotRoomCount[slotKey] || [];
+          slotRoomCount[slotKey].push(schedule[key]);
+        }
+      }
+    }
+
+    for (let slotKey in slotRoomCount) {
+      if (slotRoomCount[slotKey].length > 1) {
+        const parts = slotKey.split('-');
+        const room = parts[0];
+        const slot = parts[1];
+        const courses = slotRoomCount[slotKey].map(c => c.title || "Lecture").join(" and ");
+        cards.push(`
+          <div class="issue-card" style="border: 1px solid var(--danger-border, #fecaca); background: var(--danger-bg, #fef2f2); padding: 12px; border-radius: var(--radius);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong style="color: var(--danger); font-size: 13px;">Room Conflict: ${room}</strong>
+              <span class="poi-status" style="background: var(--danger); color: white; font-size: 10px; padding: 2px 6px;">Slot ${slot}</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px; margin-bottom: 8px;">
+              Double booked: ${courses}
+            </p>
+            <button class="btn sm" style="width: 100%; padding: 4px 8px; font-size: 11px;" onclick="showScreen('schedule')">Resolve in Cockpit</button>
+          </div>
+        `);
+      }
+    }
+
+    if (cards.length > 0) {
+      attentionContainer.innerHTML = cards.join("");
+    } else {
+      attentionContainer.innerHTML = `
+        <div style="text-align: center; padding: 24px 12px; color: var(--text-muted); font-size: 13px;">
+          ✅ All clear! No pending conflicts or requests requiring attention.
+        </div>
+      `;
+    }
+  }
+
+  // Populate Recent Activity
+  const activityContainer = $("#dashboardRecentActivityContainer");
+  if (activityContainer) {
+    const list = state.notifications || [];
+    if (list.length > 0) {
+      activityContainer.innerHTML = list.slice(0, 5).map(notif => `
+        <div style="position: relative; margin-bottom: 8px; padding-left: 4px;">
+          <div style="position: absolute; left: -21px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary);"></div>
+          <p style="font-size: 13px; font-weight: 500; margin: 0; color: var(--ink);">${notif.message}</p>
+          <span style="font-size: 11px; color: var(--text-muted);">${notif.time}</span>
+        </div>
+      `).join("");
+    } else {
+      activityContainer.innerHTML = `
+        <div style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 13px; width: 100%;">
+          No recent activity recorded.
+        </div>
+      `;
+    }
+  }
 }
 
 // ─── Issues Kanban (dynamic) ──────────────────────────────────
@@ -2566,6 +2997,18 @@ function renderIssuesKanban() {
 // ─── Bulk Room / Exam Block ───────────────────────────────────
 const selectedBulkRooms = new Set();
 
+function getDateRange(startDate, endDate) {
+  const dates = [];
+  const current = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(current.getTime()) || Number.isNaN(end.getTime()) || current > end) return dates;
+  while (current <= end) {
+    dates.push(current.toISOString().slice(0, 10));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
+
 function renderBulkRooms() {
   const grid = $("#bulkRoomGrid");
   if (!grid) return;
@@ -2582,16 +3025,6 @@ function renderBulkRooms() {
   `).join("");
   const countEl = $("#bulkSelectedCount");
   if (countEl) countEl.textContent = selectedBulkRooms.size;
-
-  // Wire filter
-  $("#bulkBuildingFilter")?.addEventListener("change", renderBulkRooms);
-  $("#toggleBulkRooms")?.addEventListener("click", () => {
-    const visible = getFlatRooms().filter(r => filter === "All buildings" || `${r.buildingCode}: ${r.buildingName}` === filter);
-    const allSel = visible.every(r => selectedBulkRooms.has(r.id));
-    visible.forEach(r => allSel ? selectedBulkRooms.delete(r.id) : selectedBulkRooms.add(r.id));
-    renderBulkRooms();
-    if (typeof updateBulkImpact === 'function') updateBulkImpact();
-  });
 }
 
 window.toggleBulkRoom = function(roomId, el) {
@@ -2617,10 +3050,10 @@ window.applyExamBlock = function() {
   let suspendedCount = 0;
   let displacedCount = 0;
 
-  let d = new Date(from);
-  const end = new Date(to);
-  while (d <= end) {
-    const dateStr = d.toISOString().slice(0, 10);
+  const affectedDates = getDateRange(from, to);
+  if (affectedDates.length === 0) { showToast("Choose a valid date range."); return; }
+
+  affectedDates.forEach(dateStr => {
     state.cellData[dateStr] = state.cellData[dateStr] || {};
 
     selectedBulkRooms.forEach(roomId => {
@@ -2664,15 +3097,18 @@ window.applyExamBlock = function() {
         };
       });
     });
-
-    d.setDate(d.getDate() + 1);
-  }
+  });
 
   const summary = policy === "exam-period"
     ? `Exam Period block applied. ${suspendedCount} class${suspendedCount === 1 ? "" : "es"} suspended — rooms freed for exams. Use "End Exam Period" to restore.`
     : `Bulk block applied to ${selectedBulkRooms.size} rooms.${ displacedCount > 0 ? ` ${displacedCount} displaced class${displacedCount === 1 ? "" : "es"} moved to unassigned queue.` : "" }`;
 
   addSystemNotification(summary);
+  affectedDates.forEach(dateStr => {
+    saveState('cellData', dateStr);
+    saveState('unassignedClasses', dateStr);
+    saveState('suspendedClasses', dateStr);
+  });
   showToast(policy === "exam-period" ? `${suspendedCount} classes suspended. Rooms cleared for exams.` : `Bulk block applied to ${selectedBulkRooms.size} rooms.`);
 
   selectedBulkRooms.clear();
@@ -2686,14 +3122,21 @@ window.updateBulkImpact = function() {
   const box = $("#bulkImpactBox");
   if (!box) return;
   const policy = $("#bulkConflictPolicy")?.value || "resolve-later";
-  const slots = Array.from($$(".exam-slots button.active")).length;
-  const conflicts = Array.from(selectedBulkRooms).reduce((acc, roomId) => {
-    for (let s = 1; s <= slotTimes.length; s++) {
-      const cell = state.cellData[state.currentDate]?.[`${roomId}-${s}`];
-      if (cell?.status === "booked") acc++;
-    }
-    return acc;
-  }, 0);
+  const selectedSlots = Array.from($$(".exam-slots button.active")).map(b => {
+    const m = b.textContent.match(/^(\d)/);
+    return m ? Number(m[1]) : null;
+  }).filter(Boolean);
+  const from = $("#examFromDate")?.value || state.currentDate;
+  const to = $("#examToDate")?.value || state.currentDate;
+  const affectedDates = getDateRange(from, to);
+  const conflicts = affectedDates.reduce((dateTotal, dateStr) => (
+    dateTotal + Array.from(selectedBulkRooms).reduce((roomTotal, roomId) => (
+      roomTotal + selectedSlots.reduce((slotTotal, slot) => {
+        const cell = state.cellData[dateStr]?.[`${roomId}-${slot}`];
+        return slotTotal + (cell?.status === "booked" ? 1 : 0);
+      }, 0)
+    ), 0)
+  ), 0);
 
   const policyNote = policy === "exam-period"
     ? ` · ${conflicts} class${conflicts === 1 ? "" : "es"} will be suspended (not lost).`
@@ -2701,7 +3144,8 @@ window.updateBulkImpact = function() {
     ? ` · ${conflicts} conflicted room${conflicts === 1 ? "" : "s"} will be skipped.`
     : ` · ${conflicts} conflict${conflicts === 1 ? "" : "s"} → unassigned queue.`;
 
-  box.textContent = `${selectedBulkRooms.size} rooms · ${slots} slots${policyNote} on ${formatDate(state.currentDate)}.`;
+  const dateLabel = affectedDates.length > 1 ? `${formatDate(affectedDates[0])} to ${formatDate(affectedDates[affectedDates.length - 1])}` : formatDate(affectedDates[0] || state.currentDate);
+  box.textContent = `${selectedBulkRooms.size} rooms · ${selectedSlots.length} slots · ${affectedDates.length || 0} day${affectedDates.length === 1 ? "" : "s"}${policyNote} from ${dateLabel}.`;
 };
 
 // ─── Exam Period — suspend & restore ─────────────────────────
@@ -2738,6 +3182,9 @@ window.endExamPeriod = function() {
     });
 
     delete state.suspendedClasses[dateStr];
+    saveState('cellData', dateStr);
+    saveState('unassignedClasses', dateStr);
+    saveState('suspendedClasses', dateStr);
   });
 
   updateExamPeriodBanner();
@@ -2790,18 +3237,13 @@ window.updateConflictPolicyHint = function() {
 };
 
 // ─── Settings & Infrastructure ────────────────────────────────
-let isEditingSlots = false;
-
-window.toggleEditSlots = function() {
-  isEditingSlots = !isEditingSlots;
-  renderSlotConfig();
-};
 
 function renderSettingsScreen() {
   renderSlotConfig();
   renderBuildingsList();
   populateInfraBuildingSelect();
   renderCalendarSettings();
+  renderUserDirectory(); // Populate user roster
 
   // Tab switching
   $$(".settings-tab").forEach(btn => {
@@ -2810,17 +3252,71 @@ function renderSettingsScreen() {
       $$(".settings-panel").forEach(p => p.classList.add("hidden"));
       btn.classList.add("active");
       $(`#settingsPanel-${btn.dataset.tab}`)?.classList.remove("hidden");
+      if (btn.dataset.tab === "users") {
+        renderUserDirectory();
+      }
     };
   });
 }
 
+function getStartTimeFromStr(timeStr) {
+  if (!timeStr) return "09:00";
+  const clean = timeStr.replace(/\s+/g, '');
+  const parts = clean.split('-');
+  if (parts.length === 0) return "09:00";
+  return convertTo24Hour(parts[0]);
+}
+
+function getEndTimeFromStr(timeStr) {
+  if (!timeStr) return "10:00";
+  const clean = timeStr.replace(/\s+/g, '');
+  const parts = clean.split('-');
+  if (parts.length < 2) return "10:00";
+  return convertTo24Hour(parts[1]);
+}
+
+function convertTo24Hour(timePart) {
+  let isPM = false;
+  if (timePart.toLowerCase().includes("pm")) isPM = true;
+  let cleanPart = timePart.replace(/[a-zA-Z]/g, '');
+  const subparts = cleanPart.split(':');
+  let hour = parseInt(subparts[0]);
+  let min = subparts[1] ? parseInt(subparts[1]) : 0;
+  
+  if (isPM && hour < 12) hour += 12;
+  if (!timePart.toLowerCase().includes("am") && !timePart.toLowerCase().includes("pm")) {
+    if (hour >= 1 && hour <= 7) hour += 12;
+  }
+  
+  return `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+}
+
+function format12Hour(time24) {
+  if (!time24) return "TBD";
+  const parts = time24.split(':');
+  let hour = parseInt(parts[0]);
+  let min = parseInt(parts[1]) || 0;
+  let ampm = "AM";
+  if (hour >= 12) {
+    ampm = "PM";
+    if (hour > 12) hour -= 12;
+  }
+  if (hour === 0) hour = 12;
+  return `${hour}:${String(min).padStart(2, '0')} ${ampm}`;
+}
+
 function syncSlotInputs() {
   const names = $$(".settings-slot-name");
-  const times = $$(".settings-slot-time");
+  const starts = $$(".settings-slot-start");
+  const ends = $$(".settings-slot-end");
   names.forEach((el, i) => {
     if (slotTimes[i]) {
       slotTimes[i].name = el.value;
-      slotTimes[i].time = times[i].value;
+      const startTime = starts[i]?.value || "09:00";
+      const endTime = ends[i]?.value || "10:00";
+      slotTimes[i].startTime = startTime;
+      slotTimes[i].endTime = endTime;
+      slotTimes[i].time = `${format12Hour(startTime)} - ${format12Hour(endTime)}`;
     }
   });
 }
@@ -2829,32 +3325,25 @@ function renderSlotConfig() {
   const list = $("#slotConfigList");
   if (!list) return;
 
-  if (!isEditingSlots) {
-    list.innerHTML = slotTimes.map(s => `
-      <div class="settings-row" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 8px 0; border-bottom: 1px solid var(--line);">
-        <strong style="width: 120px;">${s.name}</strong>
-        <span style="color: var(--text-muted);">${s.time}</span>
-      </div>
-    `).join("") + `
-      <div style="margin-top: 16px;">
-        <button class="btn" onclick="toggleEditSlots()" style="background: white;">Edit Configuration</button>
+  list.innerHTML = slotTimes.map((s, i) => {
+    const startVal = s.startTime || getStartTimeFromStr(s.time);
+    const endVal = s.endTime || getEndTimeFromStr(s.time);
+    return `
+      <div class="settings-row" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <input class="settings-slot-name" data-idx="${i}" value="${s.name}" style="width:120px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:6px;font-size:13px;" />
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <input type="time" class="settings-slot-start" data-idx="${i}" value="${startVal}" style="padding:8px 12px;border:1px solid var(--line-strong);border-radius:6px;font-size:13px;" />
+          <span style="font-size: 13px; color: var(--text-muted);">to</span>
+          <input type="time" class="settings-slot-end" data-idx="${i}" value="${endVal}" style="padding:8px 12px;border:1px solid var(--line-strong);border-radius:6px;font-size:13px;" />
+        </div>
+        <button class="btn sm" onclick="deleteSlot(${i})" style="padding: 8px; background: transparent; border: none; color: var(--danger); cursor: pointer;" aria-label="Delete Slot">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+        </button>
       </div>
     `;
-    return;
-  }
-
-  list.innerHTML = slotTimes.map((s, i) => `
-    <div class="settings-row" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-      <input class="settings-slot-name" data-idx="${i}" value="${s.name}" style="width:120px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:6px;font-size:13px;" />
-      <input class="settings-slot-time" data-idx="${i}" value="${s.time}" style="width:160px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:6px;font-size:13px;" placeholder="e.g. 9-10" />
-      <button class="btn sm" onclick="deleteSlot(${i})" style="padding: 8px; background: transparent; border: none; color: var(--danger); cursor: pointer;" aria-label="Delete Slot">
-        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-      </button>
-    </div>
-  `).join("") + `
+  }).join("") + `
     <div style="display: flex; gap: 12px; margin-top: 24px; border-top: 1px solid var(--line); padding-top: 16px;">
       <button class="btn" onclick="addNewSlot()" style="background: white;">+ Add Slot</button>
-      <button class="btn" onclick="toggleEditSlots()" style="background: white;">Cancel</button>
       <button class="btn primary" onclick="saveAllSlots()">Save Changes</button>
     </div>
   `;
@@ -2862,7 +3351,7 @@ function renderSlotConfig() {
 
 window.saveAllSlots = function() {
   syncSlotInputs();
-  isEditingSlots = false;
+  saveState('slots');
   showToast("Global slot configuration saved.");
   renderSlotConfig();
   if (state.currentRole === "admin") renderScheduleGrid(); // Refresh schedule headers if needed
@@ -2870,7 +3359,7 @@ window.saveAllSlots = function() {
 
 window.addNewSlot = function() {
   syncSlotInputs(); // Save current unsaved edits before re-rendering
-  slotTimes.push({ name: `SLOT ${slotTimes.length + 1}`, time: "TBD" });
+  slotTimes.push({ name: `SLOT ${slotTimes.length + 1}`, time: "09:00 AM - 10:00 AM", startTime: "09:00", endTime: "10:00" });
   renderSlotConfig();
   showToast("New slot added.");
 };
@@ -2938,138 +3427,142 @@ function renderBuildingsList() {
 window.saveAllBuildings = function() {
   syncBuildingInputs();
   isEditingBuildings = false;
+  saveState('buildings');
   populateInfraBuildingSelect();
   showToast("Buildings configuration saved.");
   renderBuildingsList();
 };
 
-let isEditingCalendar = false;
-
-window.toggleEditCalendar = function() {
-  isEditingCalendar = !isEditingCalendar;
-  renderCalendarSettings();
-};
-
 window.saveCalendarConfig = function() {
-  state.calendarConfig.termStart = $("#configTermStart").value;
-  state.calendarConfig.termEnd = $("#configTermEnd").value;
-  isEditingCalendar = false;
-  showToast("Academic Calendar configuration saved.");
+  const startInput = $("#configTermStart");
+  const endInput = $("#configTermEnd");
+  if (startInput) state.calendarConfig.termStart = startInput.value;
+  if (endInput) state.calendarConfig.termEnd = endInput.value;
+  saveState('calendarConfig');
+  showToast("Academic calendar saved.");
   if ($("#scheduleGrid") && !$("#schedule").classList.contains("hidden")) renderScheduleGrid();
   if ($("#calendar") && !$("#calendar").classList.contains("hidden")) renderCalendar();
-  renderCalendarSettings();
 };
+
+// ── Day labels helper ────────────────────────────────────────────────────────
+function getDayLabels(days) {
+  const map = { 0:'Sun', 1:'Mon', 2:'Tue', 3:'Wed', 4:'Thu', 5:'Fri', 6:'Sat' };
+  // Sort in week order: Mon(1) Tue(2) Wed(3) Thu(4) Fri(5) Sat(6) Sun(0)
+  const ORDER = [1,2,3,4,5,6,0];
+  return (days || []).slice().sort((a,b)=>ORDER.indexOf(a)-ORDER.indexOf(b)).map(d=>map[d]||d).join(' \u00b7 ');
+}
+
+// Compact slot code: S{n}-{DayLetters}  e.g. S2-MWF  or  S1-TuTh
+function getSlotCode(slotIndex, days) {
+  const codeMap = { 1:'M', 2:'Tu', 3:'W', 4:'Th', 5:'F', 6:'Sa', 0:'Su' };
+  const ORDER = [1,2,3,4,5,6,0];
+  const dayStr = (days||[]).slice().sort((a,b)=>ORDER.indexOf(a)-ORDER.indexOf(b)).map(d=>codeMap[d]||d).join('');
+  return `S${slotIndex}-${dayStr}`;
+}
 
 function renderCalendarSettings() {
   const container = $("#calendarConfigContainer");
   if (!container) return;
-  
-  const eventsHtml = state.calendarConfig.events.sort((a,b) => a.date.localeCompare(b.date)).map((ev, i) => `
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius);">
-      <div style="display: flex; flex-direction: column;">
-        <strong style="font-size: 14px; color: ${ev.type === 'holiday' ? 'var(--danger)' : 'var(--warning)'};">${ev.name}</strong>
-        <span style="font-size: 12px; color: var(--text-muted);">${formatDate(ev.date)} &middot; ${ev.type === 'holiday' ? 'University Holiday' : 'Exam Period'}</span>
-      </div>
-      ${isEditingCalendar ? `
-      <button class="btn sm" onclick="deleteCalendarEvent(${i})" style="padding: 8px; background: transparent; border: none; color: var(--danger); cursor: pointer;" aria-label="Delete Event">
-        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-      </button>` : ''}
-    </div>
-  `).join("");
-  
-  if (!isEditingCalendar) {
-    const offDayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const activeOffDays = state.calendarConfig.offDays.map(d => offDayLabels[d]).join(", ");
-    
-    container.innerHTML = `
-      <div style="background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; margin-bottom: 24px;">
-        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">Term Duration</h3>
-        <div style="display: flex; gap: 48px;">
-          <div>
-            <span style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">Academic Year Start</span>
-            <strong style="font-size:14px;color:var(--ink);">${formatDate(state.calendarConfig.termStart)}</strong>
-          </div>
-          <div>
-            <span style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">Academic Year End</span>
-            <strong style="font-size:14px;color:var(--ink);">${formatDate(state.calendarConfig.termEnd)}</strong>
-          </div>
-        </div>
-      </div>
 
-      <div style="background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; margin-bottom: 24px;">
-        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Standard Weekly Off-Days</h3>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Select which days of the week are considered standard non-working days (e.g. Weekends).</p>
-        <div style="display:flex;gap:8px;">
-          ${[1, 2, 3, 4, 5, 6, 0].map(val => {
-            const isActive = state.calendarConfig.offDays.includes(val);
-            return `<div class="builder-toggle ${isActive ? 'active' : ''}" style="cursor:default; pointer-events:none; opacity: ${isActive ? '1' : '0.5'};">${offDayLabels[val]}</div>`;
-          }).join("")}
-        </div>
-      </div>
+  const offDayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-      <div style="background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 24px;">
-        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">Custom Holidays & Events</h3>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Add specific dates where operations are suspended or modified.</p>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          ${eventsHtml || '<p style="font-size:13px;color:var(--text-muted);">No custom events added.</p>'}
-        </div>
-      </div>
-      
-      <div style="margin-top: 16px;">
-        <button class="btn" onclick="toggleEditCalendar()" style="background: white;">Edit Configuration</button>
-      </div>
-    `;
-    return;
-  }
-  
-  // EDIT MODE
-  const offDayLabelsMap = { 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat", 0: "Sun" };
-  
-  container.innerHTML = `
-    <div style="background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; margin-bottom: 24px;">
-      <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">Term Duration</h3>
-      <div style="display: flex; gap: 16px;">
-        <label class="field" style="flex: 1;">
-          <span>Academic Year Start</span>
-          <input type="date" id="configTermStart" value="${state.calendarConfig.termStart}" />
-        </label>
-        <label class="field" style="flex: 1;">
-          <span>Academic Year End</span>
-          <input type="date" id="configTermEnd" value="${state.calendarConfig.termEnd}" />
-        </label>
-      </div>
-    </div>
-
-    <div style="background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; margin-bottom: 24px;">
-      <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Standard Weekly Off-Days</h3>
-      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Select which days of the week are considered standard non-working days (e.g. Weekends).</p>
-      <div class="builder-toggles" id="offDayToggles">
-        ${[1, 2, 3, 4, 5, 6, 0].map(val => {
-          const isActive = state.calendarConfig.offDays.includes(val);
-          return `<button class="builder-toggle ${isActive ? 'active' : ''}" data-val="${val}" onclick="toggleCalendarOffDay(${val}, this)">${offDayLabelsMap[val]}</button>`;
-        }).join("")}
-      </div>
-    </div>
-
-    <div style="background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 24px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+  const eventsHtml = (state.calendarConfig.events || [])
+    .slice().sort((a,b) => a.date.localeCompare(b.date))
+    .map((ev, i) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border:1px solid var(--line);border-radius:var(--radius);background:white;">
         <div>
-          <h3 style="font-size: 16px; font-weight: 600;">Custom Holidays & Events</h3>
-          <p style="font-size: 13px; color: var(--text-muted);">Add specific dates where operations are suspended or modified.</p>
+          <strong style="font-size:13px;color:${ev.type==='holiday'?'var(--danger)':'var(--warning)'}">${ev.name}</strong>
+          <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:2px;">${formatDate(ev.date)} &middot; ${ev.type==='holiday'?'University Holiday':'Exam Period'}</span>
         </div>
-        <button class="btn" onclick="openAddHolidayModal()" style="font-size: 13px;">+ Add Event</button>
+        <button onclick="deleteCalendarEvent(${i})" style="background:transparent;border:none;color:var(--danger);cursor:pointer;padding:6px;" title="Delete event">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+        </button>
       </div>
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        ${eventsHtml || '<p style="font-size:13px;color:var(--text-muted);">No custom events added.</p>'}
+    `).join('');
+
+  container.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- Term Duration -->
+      <div style="background:white;border:1px solid var(--line);border-radius:var(--radius);padding:24px;">
+        <h3 style="font-size:15px;font-weight:600;margin-bottom:16px;">Term Duration</h3>
+        <div style="display:flex;gap:16px;">
+          <label class="field" style="flex:1;">
+            <span>Academic Year Start</span>
+            <input type="date" id="configTermStart" value="${state.calendarConfig.termStart}" onchange="saveCalendarConfig()" />
+          </label>
+          <label class="field" style="flex:1;">
+            <span>Academic Year End</span>
+            <input type="date" id="configTermEnd" value="${state.calendarConfig.termEnd}" onchange="saveCalendarConfig()" />
+          </label>
+        </div>
       </div>
-    </div>
-    
-    <div style="display: flex; gap: 12px; margin-top: 24px; border-top: 1px solid var(--line); padding-top: 16px;">
-      <button class="btn" onclick="toggleEditCalendar()" style="background: white;">Cancel</button>
-      <button class="btn primary" onclick="saveCalendarConfig()">Save Changes</button>
+
+      <!-- Weekly Off-Days -->
+      <div style="background:white;border:1px solid var(--line);border-radius:var(--radius);padding:24px;">
+        <h3 style="font-size:15px;font-weight:600;margin-bottom:6px;">Standard Weekly Off-Days</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Click days to toggle. Off-days are never scheduled.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${[1,2,3,4,5,6,0].map(val => {
+            const isOff = state.calendarConfig.offDays.includes(val);
+            return `<button class="builder-toggle ${isOff?'active':''}" onclick="toggleCalendarOffDay(${val},this)">${offDayLabels[val]}</button>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Custom Holidays & Events -->
+      <div style="background:white;border:1px solid var(--line);border-radius:var(--radius);padding:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div>
+            <h3 style="font-size:15px;font-weight:600;">Custom Holidays &amp; Events</h3>
+            <p style="font-size:13px;color:var(--text-muted);margin-top:2px;">Add dates where classes are suspended or modified.</p>
+          </div>
+        </div>
+
+        <!-- Inline add-event form -->
+        <div style="background:#f8fafc;border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px;">
+          <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">Add New Event</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+            <label class="field" style="flex:1;min-width:140px;margin:0;">
+              <span style="font-size:11px;">Date</span>
+              <input type="date" id="newEventDate" style="font-size:13px;padding:7px 10px;" />
+            </label>
+            <label class="field" style="flex:2;min-width:160px;margin:0;">
+              <span style="font-size:11px;">Event Name</span>
+              <input type="text" id="newEventName" placeholder="e.g. Dussehra, Midterm Week" style="font-size:13px;padding:7px 10px;" />
+            </label>
+            <label class="field" style="flex:1;min-width:130px;margin:0;">
+              <span style="font-size:11px;">Type</span>
+              <select id="newEventType" style="font-size:13px;padding:7px 10px;">
+                <option value="holiday">University Holiday</option>
+                <option value="exam">Exam Period</option>
+              </select>
+            </label>
+            <button class="btn primary" onclick="addCalendarEventInline()" style="height:36px;white-space:nowrap;">+ Add</button>
+          </div>
+        </div>
+
+        <!-- Events list -->
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${eventsHtml || '<p style="font-size:13px;color:var(--text-muted);">No events added yet.</p>'}
+        </div>
+      </div>
     </div>
   `;
 }
+
+window.addCalendarEventInline = function() {
+  const date = $("#newEventDate")?.value;
+  const name = $("#newEventName")?.value.trim();
+  const type = $("#newEventType")?.value || 'holiday';
+  if (!date) { showToast("Please pick a date."); return; }
+  if (!name) { showToast("Please enter an event name."); return; }
+  state.calendarConfig.events.push({ date, name, type });
+  saveState('calendarConfig');
+  renderCalendarSettings();
+  if (!$("#calendar").classList.contains("hidden")) renderCalendar();
+  showToast(`Event "${name}" added.`);
+};
 
 window.toggleCalendarOffDay = function(val, btn) {
   btn.classList.toggle("active");
@@ -3078,23 +3571,15 @@ window.toggleCalendarOffDay = function(val, btn) {
   } else {
     state.calendarConfig.offDays = state.calendarConfig.offDays.filter(d => d !== val);
   }
-  syncMasterScheduleToDaily(); // Live sync even in edit mode to show effects
+  saveState('calendarConfig');
+  syncMasterScheduleToDaily();
 };
 
 window.deleteCalendarEvent = function(idx) {
   state.calendarConfig.events.splice(idx, 1);
+  saveState('calendarConfig');
   renderCalendarSettings();
-};
-
-window.openAddHolidayModal = function() {
-  const dateStr = prompt("Enter event date (YYYY-MM-DD):", state.currentDate);
-  if (!dateStr) return;
-  const name = prompt("Enter event name (e.g. Spring Break):", "New Event");
-  if (!name) return;
-  const type = prompt("Enter event type (holiday or exam):", "holiday");
-  
-  state.calendarConfig.events.push({ date: dateStr, name, type: type === "exam" ? "exam" : "holiday" });
-  renderCalendarSettings();
+  if (!$("#calendar").classList.contains("hidden")) renderCalendar();
 };
 
 
@@ -3279,8 +3764,13 @@ function updateDateDisplay() {
   $("#dateDisplay").textContent = state.currentDate.split("-").reverse().join("/");
   $("#dateInput").value = state.currentDate;
   $("#pageTitle").textContent = formatDate(state.currentDate);
+  
+  // Ensure daily schedule matrix is synced in local memory for this date context
+  syncMasterScheduleToDaily();
+  
   renderScheduleGrid();
   
+  if (state.currentRole === "admin") renderDashboard();
   if (state.currentRole === "student") renderStudentHome();
   if (state.currentRole === "faculty") renderFacultyHome();
   if (state.currentRole === "facilities") renderFacilitiesScreen();
@@ -3289,7 +3779,9 @@ function updateDateDisplay() {
 }
 
 $("#todayBtn").addEventListener("click", () => {
-  state.currentDate = "2026-05-26";
+  state.currentDate = currentAppMode === "firebase" 
+    ? new Date().toISOString().split('T')[0] 
+    : "2026-05-26";
   updateDateDisplay();
 });
 
@@ -3335,6 +3827,23 @@ $("#previewBulkImpact")?.addEventListener("click", updateBulkImpact);
 $("#applyBulkBlock")?.addEventListener("click", applyExamBlock);
 
 // Make bulk form inputs reactive
+$("#bulkBuildingFilter")?.addEventListener("change", () => {
+  renderBulkRooms();
+  updateBulkImpact();
+});
+$("#toggleBulkRooms")?.addEventListener("click", () => {
+  const filter = $("#bulkBuildingFilter")?.value || "All buildings";
+  const visible = getFlatRooms().filter(r =>
+    filter === "All buildings" || `${r.buildingCode}: ${r.buildingName}` === filter
+  );
+  const allSelected = visible.length > 0 && visible.every(r => selectedBulkRooms.has(r.id));
+  visible.forEach(r => {
+    if (allSelected) selectedBulkRooms.delete(r.id);
+    else selectedBulkRooms.add(r.id);
+  });
+  renderBulkRooms();
+  updateBulkImpact();
+});
 $("#bulkConflictPolicy")?.addEventListener("change", updateBulkImpact);
 $("#examFromDate")?.addEventListener("change", updateBulkImpact);
 $("#examToDate")?.addEventListener("change", updateBulkImpact);
@@ -3389,57 +3898,74 @@ renderBellNotifications();
 // MASTER SCHEDULING MODULE (Slot-Centric)
 // ============================================================================
 
+// ── Helper: render slot toggle buttons inside builder modal ──────────────────
+function renderSlotToggles(selectedSlotIndex) {
+  const container = $("#slotToggles");
+  if (!container) return;
+  container.innerHTML = slotTimes.map((s, idx) => {
+    const si = idx + 1;
+    const isActive = si === selectedSlotIndex;
+    return `<button type="button" class="builder-toggle ${isActive?'active':''}" data-val="${si}" style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+      <span style="font-weight:600;">${s.name}</span>
+      <small style="font-size:10px;opacity:.7;">${s.time}</small>
+    </button>`;
+  }).join("");
+  container.querySelectorAll(".builder-toggle").forEach(btn => {
+    btn.addEventListener("click", () => {
+      container.querySelectorAll(".builder-toggle").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      updateLivePreview();
+    });
+  });
+}
+
+// mockSlotGroups: each course has slotIndex (1-based) + days ([1..5] JS day numbers)
 const mockSlotGroups = [
   {
-    id: "group-A",
-    name: "A Group",
-    pattern: "A11 + A13 + A15",
-    description: "Slot 1 (Mon, Wed, Fri)",
+    id: "slot-1",
+    slotIndex: 1,
+    name: "Slot 1",
     courses: [
-      { id: "CS201", title: "Data Structures", cohort: "B.Tech CS Year 2", faculty: "Dr. Ananya Mehta", room: "A-101", capacity: 120, enrolled: 110 },
-      { id: "ME301", title: "Thermodynamics", cohort: "B.Tech ME Year 3", faculty: "Dr. R. Kumar", room: "C-201", capacity: 80, enrolled: 75 },
-      { id: "EE101", title: "Basic Electronics", cohort: "B.Tech EE Year 1", faculty: "Prof. S. Rao", room: "F-AUD-01", capacity: 200, enrolled: 180 },
-      { id: "FIN101", title: "Corporate Finance", cohort: "MBA Year 1", faculty: "Prof. L. Das", room: "A-102", capacity: 60, enrolled: 60 }
+      { id: "CS201", title: "Data Structures", cohort: "B.Tech CS Year 2", faculty: "Dr. Ananya Mehta", room: "A-101", slotIndex: 1, days: [1,3,5], capacity: 120, enrolled: 110 },
+      { id: "ME301", title: "Thermodynamics", cohort: "B.Tech ME Year 3", faculty: "Dr. R. Kumar", room: "C-201", slotIndex: 1, days: [1,3,5], capacity: 80, enrolled: 75 },
+      { id: "EE101", title: "Basic Electronics", cohort: "B.Tech EE Year 1", faculty: "Prof. S. Rao", room: "F-AUD-01", slotIndex: 1, days: [2,4], capacity: 200, enrolled: 180 },
+      { id: "FIN101", title: "Corporate Finance", cohort: "MBA Year 1", faculty: "Prof. L. Das", room: "A-102", slotIndex: 1, days: [2,4], capacity: 60, enrolled: 60 }
     ]
   },
   {
-    id: "group-B",
-    name: "B Group",
-    pattern: "B11 + B13 + B15",
-    description: "Slot 2 (Mon, Wed, Fri)",
+    id: "slot-2",
+    slotIndex: 2,
+    name: "Slot 2",
     courses: [
-      { id: "MA201", title: "Linear Algebra", cohort: "B.Tech CS Year 2", faculty: "Prof. Suresh Iyer", room: "A-101", capacity: 120, enrolled: 120 },
-      { id: "ME302", title: "Fluid Mechanics", cohort: "B.Tech ME Year 3", faculty: "Prof. A. Sharma", room: "C-201", capacity: 80, enrolled: 75 }
+      { id: "MA201", title: "Linear Algebra", cohort: "B.Tech CS Year 2", faculty: "Prof. Suresh Iyer", room: "A-101", slotIndex: 2, days: [1,3,5], capacity: 120, enrolled: 120 },
+      { id: "ME302", title: "Fluid Mechanics", cohort: "B.Tech ME Year 3", faculty: "Prof. A. Sharma", room: "C-201", slotIndex: 2, days: [1,3,5], capacity: 80, enrolled: 75 }
     ]
   },
   {
-    id: "group-C",
-    name: "C Group",
-    pattern: "C12 + C14",
-    description: "Slot 3 (Tue, Thu)",
+    id: "slot-3",
+    slotIndex: 3,
+    name: "Slot 3",
     courses: [
-      { id: "MGT401", title: "Strategic Management", cohort: "MBA Year 2", faculty: "Dr. V. Singh", room: "E-101", capacity: 60, enrolled: 55 },
-      { id: "PSY101", title: "Intro to Psychology", cohort: "BA Humanities Year 1", faculty: "Prof. N. Gupta", room: "G-102", capacity: 90, enrolled: 85 }
+      { id: "MGT401", title: "Strategic Management", cohort: "MBA Year 2", faculty: "Dr. V. Singh", room: "E-101", slotIndex: 3, days: [2,4], capacity: 60, enrolled: 55 },
+      { id: "PSY101", title: "Intro to Psychology", cohort: "BA Humanities Year 1", faculty: "Prof. N. Gupta", room: "G-102", slotIndex: 3, days: [2,4], capacity: 90, enrolled: 85 }
     ]
   },
   {
-    id: "group-D",
-    name: "D Group",
-    pattern: "D12 + D14",
-    description: "Slot 4 (Tue, Thu)",
+    id: "slot-4",
+    slotIndex: 4,
+    name: "Slot 4",
     courses: [
-      { id: "CS305", title: "Machine Learning", cohort: "B.Tech CS Year 3", faculty: "Dr. R. Desai", room: "A-101", capacity: 120, enrolled: 115 },
-      { id: "ENG201", title: "World Literature", cohort: "BA English Year 2", faculty: "Prof. K. Sen", room: "G-101", capacity: 60, enrolled: 45 }
+      { id: "CS305", title: "Machine Learning", cohort: "B.Tech CS Year 3", faculty: "Dr. R. Desai", room: "A-101", slotIndex: 4, days: [2,4], capacity: 120, enrolled: 115 },
+      { id: "ENG201", title: "World Literature", cohort: "BA English Year 2", faculty: "Prof. K. Sen", room: "G-101", slotIndex: 4, days: [2,4], capacity: 60, enrolled: 45 }
     ]
   },
   {
-    id: "group-F",
-    name: "F Group",
-    pattern: "F11 + F12 + F14",
-    description: "Slot 6 (Mon, Tue, Thu)",
+    id: "slot-6",
+    slotIndex: 6,
+    name: "Slot 6",
     courses: [
-      { id: "CS201-L", title: "Data Structures Lab", cohort: "B.Tech CS Year 2", faculty: "Dr. Ananya Mehta", room: "D-LAB-1", capacity: 40, enrolled: 35 },
-      { id: "ME301-L", title: "Thermo Lab", cohort: "B.Tech ME Year 3", faculty: "Dr. R. Kumar", room: "D-LAB-2", capacity: 30, enrolled: 25 }
+      { id: "CS201-L", title: "Data Structures Lab", cohort: "B.Tech CS Year 2", faculty: "Dr. Ananya Mehta", room: "D-LAB-2", slotIndex: 6, days: [1,2,4], capacity: 40, enrolled: 35 },
+      { id: "ME301-L", title: "Thermo Lab", cohort: "B.Tech ME Year 3", faculty: "Dr. R. Kumar", room: "D-LAB-5", slotIndex: 6, days: [1,2,4], capacity: 30, enrolled: 25 }
     ]
   }
 ];
@@ -3449,14 +3975,20 @@ let activeSlotGroupId = null;
 function renderMasterScheduling() {
   const slotList = $("#slotList");
   if (!slotList) return;
-  
-  slotList.innerHTML = mockSlotGroups.map(g => `
-    <div class="cohort-item ${activeSlotGroupId === g.id ? 'active' : ''}" onclick="selectSlotGroup('${g.id}')">
-      <strong>${g.name}</strong>
-      <span>${g.pattern} &middot; ${g.description}</span>
-    </div>
-  `).join("");
-  
+
+  slotList.innerHTML = mockSlotGroups.map(g => {
+    const slotInfo = slotTimes[g.slotIndex - 1] || { name: g.name, time: '' };
+    const totalEnrolled = g.courses.reduce((sum, c) => sum + (c.enrolled || 0), 0);
+    return `
+      <div class="cohort-item ${activeSlotGroupId === g.id ? 'active' : ''}" onclick="selectSlotGroup('${g.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+          <strong>${slotInfo.name}</strong>
+          <span style="font-size:11px;font-weight:600;color:var(--primary);background:#eff6ff;padding:2px 8px;border-radius:20px;">${slotInfo.time}</span>
+        </div>
+        <span style="font-size:12px;color:var(--text-muted);">${g.courses.length} course${g.courses.length!==1?'s':''} &middot; ${totalEnrolled} enrolled</span>
+      </div>`;
+  }).join("");
+
   renderConstraintsPane();
   renderCampusOccupancyGrid(false);
 }
@@ -3480,30 +4012,35 @@ function renderConstraintsPane() {
   
   const group = mockSlotGroups.find(g => g.id === activeSlotGroupId);
   if (!group) return;
-  
+
   emptyState.classList.add("hidden");
   content.classList.remove("hidden");
-  
-  title.innerHTML = `${group.name} (${group.pattern})`;
+
+  const slotInfo = slotTimes[group.slotIndex - 1] || { name: group.name, time: '' };
+  title.innerHTML = `${slotInfo.name} <span style="font-size:13px;font-weight:400;color:var(--text-muted);">(${slotInfo.time})</span>`;
   content.querySelector(".tag").innerText = `${group.courses.length} Courses`;
-  
+
   list.innerHTML = group.courses.map(course => `
-    <div class="constraint-card" style="position: relative;">
-      <div class="constraint-card-header" style="padding-right: 48px;">
-        <strong>${course.title} (${course.id})</strong>
-        <span style="font-size: 11px; color: var(--text-muted);">${course.faculty}</span>
+    <div class="constraint-card" style="position:relative;">
+      <div class="constraint-card-header" style="padding-right:52px;">
+        <strong>${course.title} <span style="font-weight:400;color:var(--text-muted);font-size:12px;">(${course.id})</span></strong>
+        <span style="font-size:12px;color:var(--text-muted);">${course.faculty}</span>
       </div>
-      <div style="position: absolute; top: 12px; right: 12px; display: flex; gap: 4px;">
-        <button onclick="editMasterCourse('${group.id}', '${course.id}')" style="background: transparent; border: none; color: var(--primary); cursor: pointer;" aria-label="Edit Course" title="Edit Course">
+      <div style="position:absolute;top:12px;right:12px;display:flex;gap:4px;">
+        <button onclick="editMasterCourse('${group.id}','${course.id}')" style="background:transparent;border:none;color:var(--primary);cursor:pointer;" title="Edit">
           <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
         </button>
-        <button onclick="deleteMasterCourse('${group.id}', '${course.id}')" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer;" aria-label="Delete Course" title="Delete Course">
+        <button onclick="deleteMasterCourse('${group.id}','${course.id}')" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;" title="Delete">
           <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
         </button>
       </div>
-      <div class="workload-badges" style="justify-content: space-between; align-items: center;">
-        <span class="workload-badge" style="background: transparent; border: none; padding: 0;">${course.cohort}</span>
-        <span class="workload-badge" style="color:var(--primary); border-color:var(--primary);">Room: ${course.room}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:6px;">
+        <span style="font-size:12px;color:var(--text-muted);">${course.cohort}</span>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span style="font-size:11px;font-weight:600;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;padding:2px 8px;border-radius:20px;">${getDayLabels(course.days)}</span>
+          <span style="font-size:11px;font-weight:600;background:#eff6ff;color:var(--primary);border:1px solid #bfdbfe;padding:2px 8px;border-radius:20px;">&#128205; ${course.room}</span>
+          <span style="font-size:11px;color:var(--text-muted);">${course.enrolled||0} enrolled</span>
+        </div>
       </div>
     </div>
   `).join("");
@@ -3626,7 +4163,7 @@ window.openPatternBuilderModal = function() {
   editingMasterCourseData = null;
   const modal = $("#patternBuilderModal");
   if (!modal) return;
-  
+
   // Populate Room Dropdown dynamically
   const roomSelect = $("#builderRoomSelect");
   if (roomSelect) {
@@ -3640,20 +4177,39 @@ window.openPatternBuilderModal = function() {
     });
     roomSelect.innerHTML = optionsHtml;
   }
-  
+
   // Reset fields
   $("#builderCourseId").value = "";
   $("#builderCourseName").value = "";
   $("#builderFacultyName").value = "";
+  const facultySearch = document.getElementById("builderFacultySearch");
+  if (facultySearch) facultySearch.value = "";
+  const facultyEmail = document.getElementById("builderFacultyEmail");
+  if (facultyEmail) facultyEmail.value = "";
+
+  // Reset student roster
+  currentCourseStudents = [];
+  const enrolledCount = document.getElementById("builderEnrolledCount");
+  if (enrolledCount) enrolledCount.innerText = "0 students";
+  const rosterPreview = document.getElementById("courseStudentsListPreview");
+  if (rosterPreview) rosterPreview.innerHTML = "No students uploaded for this course yet.";
+  const fileInput = document.getElementById("courseStudentsUploadInput");
+  if (fileInput) fileInput.value = "";
+
   $("#builderCohort").value = "";
   $("#builderEffectiveDate").value = "";
+  const eEnd = $("#builderEffectiveEndDate");
+  if (eEnd) eEnd.value = "";
   $("#builderRoomSelect").value = "";
-  const accessibilityCheckbox = $("#builderAccessibilityRequired");
-  if (accessibilityCheckbox) accessibilityCheckbox.checked = false;
-  
-  // Reset toggles
-  $$(".builder-toggle").forEach(btn => btn.classList.remove("active"));
-  
+  const acc = $("#builderAccessibilityRequired");
+  if (acc) acc.checked = false;
+
+  // Render slot toggles from live slotTimes (no pre-selection)
+  renderSlotToggles(null);
+
+  // Reset day toggles
+  $$("#dayToggles .builder-toggle").forEach(btn => btn.classList.remove("active"));
+
   updateLivePreview();
   modal.classList.remove("hidden");
 };
@@ -3666,13 +4222,8 @@ window.editMasterCourse = function(groupId, courseId) {
 
   editingMasterCourseData = { groupId, courseId };
 
-  // Parse the base code. Since id is generated as baseCode + pattern - room
-  // This is a rough estimation to repopulate the builder.
-  // Best effort reverse engineering of the auto-generated ID:
-  // Usually base code is everything before the first slot letter
-  const slotLetter = group.pattern.charAt(0);
-  const baseCodeSplit = course.id.split(slotLetter);
-  const baseCode = baseCodeSplit.length > 0 ? baseCodeSplit[0] : course.id;
+  // Derive base code: strip room suffix if present (e.g. "CS101-A101" → "CS101")
+  const baseCode = course.id.replace(/-[A-Z0-9-]+$/, '') || course.id;
 
   const modal = $("#patternBuilderModal");
   if (!modal) return;
@@ -3695,22 +4246,49 @@ window.editMasterCourse = function(groupId, courseId) {
   $("#builderCourseId").value = baseCode;
   $("#builderCourseName").value = course.title;
   $("#builderFacultyName").value = course.faculty;
+  const facultySearch = document.getElementById("builderFacultySearch");
+  if (facultySearch) facultySearch.value = course.faculty || "";
+  const facultyEmail = document.getElementById("builderFacultyEmail");
+  if (facultyEmail) {
+    const fUser = (state.users || []).find(u => u.name === course.faculty && (u.role === 'faculty' || (u.roles && u.roles.includes('faculty'))));
+    facultyEmail.value = fUser ? fUser.email : "";
+  }
+
+  // Populate course student uploads
+  currentCourseStudents = course.students || [];
+  const enrolledCount = document.getElementById("builderEnrolledCount");
+  if (enrolledCount) enrolledCount.innerText = `${currentCourseStudents.length} students`;
+  const rosterPreview = document.getElementById("courseStudentsListPreview");
+  if (rosterPreview) {
+    if (currentCourseStudents.length > 0) {
+      rosterPreview.innerHTML = currentCourseStudents.map(s => `
+        <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #f1f5f9;">
+          <span>${s.name} (${s.email})</span>
+          <span style="font-family:monospace; color:var(--text-muted);">${s.id}</span>
+        </div>
+      `).join("");
+    } else {
+      rosterPreview.innerHTML = "No students uploaded for this course yet.";
+    }
+  }
+  const fileInput = document.getElementById("courseStudentsUploadInput");
+  if (fileInput) fileInput.value = "";
+
   $("#builderCohort").value = course.cohort;
   $("#builderEffectiveDate").value = course.effectiveDate || "";
+  const eEnd = $("#builderEffectiveEndDate");
+  if (eEnd) eEnd.value = course.effectiveEndDate || "";
   $("#builderRoomSelect").value = course.room;
   const accessibilityCheckbox = $("#builderAccessibilityRequired");
   if (accessibilityCheckbox) accessibilityCheckbox.checked = course.accessibilityRequired || false;
 
-  // Populate toggles based on group pattern (e.g. A11 + A13 + A15)
-  $$(".builder-toggle").forEach(btn => btn.classList.remove("active"));
-  
-  const slotBtn = Array.from($$("#slotToggles .builder-toggle")).find(b => b.dataset.val === slotLetter);
-  if (slotBtn) slotBtn.classList.add("active");
+  // Render slot toggles from slotTimes, pre-select the course's slotIndex
+  renderSlotToggles(course.slotIndex);
 
-  const days = group.pattern.match(/\d{2}/g) || [];
-  days.forEach(d => {
-    const dayBtn = Array.from($$("#dayToggles .builder-toggle")).find(b => b.dataset.val === d);
-    if (dayBtn) dayBtn.classList.add("active");
+  // Pre-select days
+  const courseDays = course.days || [];
+  $$("#dayToggles .builder-toggle").forEach(btn => {
+    btn.classList.toggle("active", courseDays.includes(parseInt(btn.dataset.val)));
   });
 
   updateLivePreview();
@@ -3722,18 +4300,13 @@ window.closePatternBuilderModal = function() {
   if (modal) modal.classList.add("hidden");
 };
 
-$$(".builder-toggle").forEach(btn => {
-  btn.addEventListener("click", () => {
-    // If it's a Slot toggle (A-F), it should be exclusive (radio behavior)
-    if (btn.parentElement.id === "slotToggles") {
-      $$("#slotToggles .builder-toggle").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-    } 
-    // If it's a Day toggle (11-15), it can be multi-select (checkbox behavior)
-    else if (btn.parentElement.id === "dayToggles") {
+// Day toggles (static HTML) — attach listeners for multi-select
+document.addEventListener('DOMContentLoaded', () => {
+  $$("#dayToggles .builder-toggle").forEach(btn => {
+    btn.addEventListener("click", () => {
       btn.classList.toggle("active");
-    }
-    updateLivePreview();
+      updateLivePreview();
+    });
   });
 });
 
@@ -3742,141 +4315,265 @@ function updateLivePreview() {
   const activeDayBtns = $$("#dayToggles .builder-toggle.active");
   const preview = $("#builderLivePreview");
   const idPreview = $("#builderCourseIdPreview");
-  
-  if (!activeSlotBtn || activeDayBtns.length === 0) {
+  const slotCodePreview = $("#builderSlotCodePreview");
+
+  if (!preview) return null;
+
+  const resetState = () => {
     preview.innerText = "Select options above";
     preview.style.color = "var(--text-muted)";
     preview.style.borderColor = "var(--line)";
     preview.style.background = "#f8fafc";
-    
     if (idPreview) idPreview.innerText = "Awaiting inputs...";
-    return null;
-  }
-  
-  const slotLetter = activeSlotBtn.dataset.val; // e.g. "A"
-  
-  // Sort days chronologically (11, 12, 13)
-  const days = Array.from(activeDayBtns).map(b => b.dataset.val).sort();
-  
-  // Generate nomenclature: A11 + A13 + A15
-  const patternParts = days.map(day => `${slotLetter}${day}`);
-  const patternString = patternParts.join(" + ");
-  
-  preview.innerText = patternString;
+    if (slotCodePreview) slotCodePreview.innerText = "\u2014";
+  };
+
+  if (!activeSlotBtn || activeDayBtns.length === 0) { resetState(); return null; }
+
+  const slotIndex = parseInt(activeSlotBtn.dataset.val); // 1-based
+  const slotInfo = slotTimes[slotIndex - 1] || { name: `Slot ${slotIndex}`, time: '' };
+  const days = Array.from(activeDayBtns).map(b => parseInt(b.dataset.val));
+  const dayLabels = getDayLabels(days);
+  const room = $("#builderRoomSelect").value || "[ROOM]";
+  const slotCode = getSlotCode(slotIndex, days);
+  const previewText = `${slotInfo.name} (${slotInfo.time}) \u00b7 ${dayLabels} \u2192 ${room}`;
+
+  preview.innerText = previewText;
   preview.style.color = "var(--primary)";
   preview.style.borderColor = "var(--primary)";
   preview.style.background = "#eff6ff";
-  
-  // Generate the Course ID requested by the user: Base + CompactPattern - Room
-  const baseCode = $("#builderCourseId").value.trim().toUpperCase() || "[BASE]";
-  const compactPattern = `${slotLetter}${days.join("+")}`; // e.g. A12+14
-  const room = $("#builderRoomSelect").value || "[ROOM]";
-  const fullCourseId = `${baseCode}${compactPattern}-${room}`;
-  
+
+  if (slotCodePreview) {
+    slotCodePreview.innerText = slotCode;
+  }
+
+  const baseCode = $("#builderCourseId").value.trim().toUpperCase() || "[CODE]";
+  // Course ID = BaseCode-SlotCode-RoomNorm  e.g. CS101-S2-MWF-A101
+  const roomNorm = room.replace(/-/g, '');
+  const fullCourseId = `${baseCode}-${slotCode}-${roomNorm}`;
   if (idPreview) idPreview.innerText = fullCourseId;
-  
-  return { patternString, fullCourseId };
+
+  return { slotIndex, days, slotCode, previewText, fullCourseId };
 }
 
-window.submitNewCourse = function() {
+window.submitNewCourse = async function() {
   const baseCode = $("#builderCourseId").value.trim();
   const courseName = $("#builderCourseName").value.trim();
   const facultyName = $("#builderFacultyName")?.value.trim() || "TBD";
+  const facultyEmail = $("#builderFacultyEmail")?.value.trim() || "";
   const cohort = $("#builderCohort")?.value.trim() || "Custom Added";
   const effectiveDate = $("#builderEffectiveDate")?.value || state.currentDate;
+  const effectiveEndDate = $("#builderEffectiveEndDate")?.value || "";
   const room = $("#builderRoomSelect").value;
   const accessibilityRequired = $("#builderAccessibilityRequired")?.checked || false;
-  
-  if (!baseCode || !courseName) {
-    showToast("Please enter the Base Course Code and Name.");
-    return;
-  }
-  
+
+  if (!baseCode || !courseName) { showToast("Please enter the Course Code and Name."); return; }
+
   const previewData = updateLivePreview();
-  if (!previewData) {
-    showToast("Please select a Slot and at least one Day.");
-    return;
+  if (!previewData) { showToast("Please select a Slot and at least one Day."); return; }
+
+  if (!room) { showToast("Please assign a classroom."); return; }
+
+  const { slotIndex, days, slotCode, fullCourseId } = previewData;
+  const courseId = fullCourseId;
+
+  // Validate end date if provided
+  if (effectiveEndDate && effectiveDate && effectiveEndDate < effectiveDate) {
+    showToast("Effective End Date must be after Start Date."); return;
   }
-  
-  const pattern = previewData.patternString;
-  const courseId = previewData.fullCourseId;
-  
-  if (!room) {
-    showToast("Please assign a classroom.");
-    return;
-  }
-  
-  const slotLetter = pattern.charAt(0); // 'A', 'B', 'F'
-  
-  // Conflict Validation across all groups based on overlapping blocks
-  const newBlocks = pattern.split("+").map(s => s.trim());
-  let conflictCourse = null;
-  let conflictGroup = null;
-  
+
+  // Conflict check: same room, same slot, overlapping days
+  let conflictCourse = null, conflictGroup = null;
   mockSlotGroups.forEach(g => {
-    const existingBlocks = g.pattern.split("+").map(s => s.trim());
-    const hasOverlap = newBlocks.some(b => existingBlocks.includes(b));
-    if (hasOverlap) {
-      const c = g.courses.find(course => course.room === room);
-      if (c && (!editingMasterCourseData || c.id !== editingMasterCourseData.courseId)) {
-        conflictCourse = c;
-        conflictGroup = g;
-      }
-    }
+    if (g.slotIndex !== slotIndex) return;
+    g.courses.forEach(c => {
+      if (c.room !== room) return;
+      if (editingMasterCourseData && c.id === editingMasterCourseData.courseId) return;
+      const overlap = (c.days || []).some(d => days.includes(d));
+      if (overlap) { conflictCourse = c; conflictGroup = g; }
+    });
   });
-
   if (conflictCourse) {
-    showToast(`Conflict: Room ${room} is already assigned to ${conflictCourse.id} during overlapping slots (${conflictGroup.pattern})!`);
+    showToast(`Conflict: Room ${room} already has "${conflictCourse.title}" in this slot on overlapping days!`);
     return;
   }
 
-  // If editing, remove the old course first
+  // Change button label to show working status
+  const submitBtn = document.querySelector('button[onclick="submitNewCourse()"]');
+  const originalBtnText = submitBtn ? submitBtn.innerText : "Add to Master Schedule";
+  if (submitBtn) {
+    submitBtn.innerText = "Provisioning Users...";
+    submitBtn.disabled = true;
+  }
+
+  const customerId = state.currentUserProfile?.customerId || state.university?.customerId || "";
+
+  try {
+    // Helper function to provision a student or faculty in Auth and Firestore
+    const provisionUser = async (email, name, role, cid, cId) => {
+      const lowerEmail = email.toLowerCase().trim();
+      if (currentAppMode === 'firebase' && isFirebaseInitialized) {
+        // Create auth user
+        try {
+          const tempAppName = "TempApp_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+          const tempApp = firebase.initializeApp(activeFbConfig, tempAppName);
+          await tempApp.auth().createUserWithEmailAndPassword(lowerEmail, "password123");
+          await tempApp.delete();
+          console.log(`Auth user created: ${lowerEmail}`);
+        } catch (e) {
+          console.log(`Auth user already exists or failed for ${lowerEmail}:`, e.message);
+        }
+
+        // Write user doc in Firestore
+        const userDocRef = fbDb.collection('users').doc(lowerEmail);
+        const userDoc = await userDocRef.get();
+        if (userDoc.exists) {
+          const existingData = userDoc.data();
+          const enrolled = existingData.enrolledCourses || [];
+          const taught = existingData.taughtCourses || [];
+          const updateData = {};
+          
+          if (role === 'student') {
+            if (!enrolled.includes(cId)) {
+              enrolled.push(cId);
+              updateData.enrolledCourses = enrolled;
+            }
+          } else if (role === 'faculty') {
+            const baseCourseId = cId.split('-')[0];
+            if (!taught.includes(baseCourseId)) {
+              taught.push(baseCourseId);
+              updateData.taughtCourses = taught;
+            }
+          }
+          if (!existingData.roles || !existingData.roles.includes(role)) {
+            updateData.roles = Array.from(new Set([...(existingData.roles || []), role]));
+          }
+          if (Object.keys(updateData).length > 0) {
+            await userDocRef.update(updateData);
+          }
+        } else {
+          const newUserDoc = {
+            email: lowerEmail,
+            name: name,
+            role: role,
+            roles: [role],
+            customerId: cid,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          if (role === 'student') {
+            newUserDoc.enrolledCourses = [cId];
+          } else if (role === 'faculty') {
+            newUserDoc.taughtCourses = [cId.split('-')[0]];
+          }
+          await userDocRef.set(newUserDoc);
+        }
+      } else {
+        // Offline mode
+        let user = state.users.find(u => u.email.toLowerCase() === lowerEmail);
+        if (!user) {
+          user = {
+            email: lowerEmail,
+            name: name,
+            role: role,
+            roles: [role],
+            customerId: cid
+          };
+          state.users.push(user);
+        }
+        if (role === 'student') {
+          user.enrolledCourses = user.enrolledCourses || [];
+          if (!user.enrolledCourses.includes(cId)) {
+            user.enrolledCourses.push(cId);
+          }
+        } else if (role === 'faculty') {
+          user.taughtCourses = user.taughtCourses || [];
+          const baseCourseId = cId.split('-')[0];
+          if (!user.taughtCourses.includes(baseCourseId)) {
+            user.taughtCourses.push(baseCourseId);
+          }
+        }
+      }
+    };
+
+    // 1. Provision students
+    for (const student of currentCourseStudents) {
+      await provisionUser(student.email, student.name, 'student', customerId, courseId);
+    }
+
+    // 2. Provision faculty (if email is provided)
+    if (facultyEmail) {
+      await provisionUser(facultyEmail, facultyName, 'faculty', customerId, courseId);
+    }
+  } catch (provErr) {
+    console.error("User provisioning error during course creation:", provErr);
+    showToast("Warning: Some students/faculty credentials could not be provisioned.");
+  }
+
+  // Remove old course if editing
   if (editingMasterCourseData) {
     const oldGroup = mockSlotGroups.find(g => g.id === editingMasterCourseData.groupId);
     if (oldGroup) {
       const oldIdx = oldGroup.courses.findIndex(c => c.id === editingMasterCourseData.courseId);
       if (oldIdx !== -1) oldGroup.courses.splice(oldIdx, 1);
+      // Clean up empty groups
+      if (oldGroup.courses.length === 0) {
+        const gi = mockSlotGroups.indexOf(oldGroup);
+        if (gi !== -1) mockSlotGroups.splice(gi, 1);
+      }
     }
   }
 
-  // Find existing group with the EXACT same pattern, or create a new one
-  let group = mockSlotGroups.find(g => g.pattern === pattern);
-  
+  // Find or create a slot group for this slotIndex
+  let group = mockSlotGroups.find(g => g.slotIndex === slotIndex);
   if (!group) {
-    group = {
-      id: `group-${pattern.replace(/\s+/g, '').replace(/\+/g, '-')}`,
-      name: `${slotLetter} Group`,
-      pattern: pattern,
-      description: `Custom Pattern (${pattern})`,
-      courses: []
-    };
+    const slotInfo = slotTimes[slotIndex - 1] || { name: `Slot ${slotIndex}` };
+    group = { id: `slot-${slotIndex}`, slotIndex, name: slotInfo.name, courses: [] };
     mockSlotGroups.push(group);
+    mockSlotGroups.sort((a, b) => a.slotIndex - b.slotIndex);
   }
 
   group.courses.push({
     id: courseId,
     title: courseName,
-    cohort: cohort,
+    cohort,
     faculty: facultyName,
-    effectiveDate: effectiveDate,
-    room: room,
-    capacity: 0,
-    enrolled: 0,
-    accessibilityRequired: accessibilityRequired
-  });
-  
-  // Wipe cell data to force a clean re-sync
-  Object.keys(state.cellData).forEach(date => {
-    state.cellData[date] = {}; 
+    facultyEmail: facultyEmail,
+    effectiveDate,
+    effectiveEndDate: effectiveEndDate || null,
+    room,
+    slotIndex,
+    days,
+    slotCode: slotCode || getSlotCode(slotIndex, days),
+    capacity: currentCourseStudents.length > 0 ? currentCourseStudents.length : 60,
+    enrolled: currentCourseStudents.length,
+    students: currentCourseStudents,
+    accessibilityRequired
   });
 
+  // Clear and resync
+  Object.keys(state.cellData).forEach(date => { state.cellData[date] = {}; });
+  
+  if (currentAppMode === 'firebase' && isFirebaseInitialized) {
+    await saveState('mockSlotGroups');
+  }
+
   closePatternBuilderModal();
-  activeSlotGroupId = group.id; // Switch view to the new/updated group
+  activeSlotGroupId = group.id;
   renderMasterScheduling();
-  syncMasterScheduleToDaily(); // Sync to daily ledger
-  if (state.currentRole === "admin") renderScheduleGrid(); // Refresh UI
-  showToast(`${courseId} added to Master Schedule!`);
-  addSystemNotification(`Course ${courseId} mapped to pattern ${pattern}.`);
+  syncMasterScheduleToDaily();
+  
+  if (currentAppMode === 'firebase' && isFirebaseInitialized) {
+    saveState('cellData', state.currentDate);
+  }
+  
+  if (state.currentRole === "admin") renderScheduleGrid();
+  showToast(`Course "${courseName}" added to ${group.name}!`);
+  addSystemNotification(`${courseId} \u2014 ${group.name}, ${getDayLabels(days)}.`);
+
+  if (submitBtn) {
+    submitBtn.innerText = originalBtnText;
+    submitBtn.disabled = false;
+  }
 };
 
 // ============================================================================
@@ -3885,113 +4582,172 @@ window.submitNewCourse = function() {
 
 function syncMasterScheduleToDaily() {
   const dateStr = state.currentDate;
-  state.cellData[dateStr] = state.cellData[dateStr] || {};
   
+  // Cache any existing manual override bookings from Firestore
+  const existingSchedule = state.cellData[dateStr] || {};
+  const newSchedule = {};
+
   const d = new Date(dateStr);
-  const jsDay = d.getDay(); // 0 = Sunday, 1 = Monday
-  
-  if (state.calendarConfig.offDays.includes(jsDay)) return; // No master courses on standard off-days
-  
-  const targetDay = (jsDay + 10).toString(); // 1 -> "11", 2 -> "12"...
-  
-  mockSlotGroups.forEach(group => {
-    // e.g. group.pattern = "A11 + A13 + A15"
-    const blocks = group.pattern.split("+").map(s => s.trim());
-    blocks.forEach(block => {
-      if (block.endsWith(targetDay)) {
-        const slotLetter = block.charAt(0);
-        const slotMap = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6 };
-        const slotNum = slotMap[slotLetter];
+  const jsDay = d.getDay(); // 0=Sun, 1=Mon … 6=Sat
+
+  // Helper to check if a booking has a manual status or manual booking
+  const isPreserved = (key) => {
+    const b = existingSchedule[key];
+    if (!b) return false;
+    // Keep it if it is cancelled, virtual, blocked, or manually created
+    return b.status === "cancelled" || b.status === "virtual" || b.status === "blocked" || b.courseId === "MANUAL";
+  };
+
+  // Skip calendar-level off-days unless there is a manual override already set in database
+  const isOffDay = state.calendarConfig.offDays.includes(jsDay);
+  const blockedEvent = (state.calendarConfig.events || []).find(e => e.date === dateStr);
+
+  if (!isOffDay && !blockedEvent) {
+    mockSlotGroups.forEach(group => {
+      group.courses.forEach(course => {
+        // Check effective start date
+        if (course.effectiveDate && dateStr < course.effectiveDate) return;
+        // Check effective end date (if set)
+        if (course.effectiveEndDate && dateStr > course.effectiveEndDate) return;
+
+        // Check if this course runs on today's day-of-week
+        const courseDays = course.days || [];
+        if (!courseDays.includes(jsDay)) return;
+
+        const slotNum = course.slotIndex;
+        if (!slotNum) return;
+
+        const key = `${course.room}-${slotNum}`;
         
-        if (slotNum) {
-          group.courses.forEach(course => {
-            // Check effective date
-            if (course.effectiveDate && dateStr < course.effectiveDate) {
-              return; // Skip syncing this course if the sync date is before its effective start date
-            }
-            
-            const key = `${course.room}-${slotNum}`;
-            // If the cell is empty or already booked by a master course, overwrite it.
-            // If it was manually modified (e.g. ad-hoc booking), we ideally wouldn't overwrite, but for demo we will.
-            state.cellData[dateStr][key] = {
-              status: "booked",
-              title: course.title,
-              faculty: course.faculty || "TBA",
-              count: course.capacity || 50,
-              courseId: course.id,
-              requirements: course.accessibilityRequired ? "Lecture, capacity 50+, accessible" : "Synced from Master Schedule",
-              accessibilityRequired: course.accessibilityRequired || false,
-              audit: `Auto-published from Master Matrix (${group.name})`
-            };
-          });
+        if (isPreserved(key)) {
+          // Keep the existing manual booking/override from database
+          newSchedule[key] = existingSchedule[key];
+        } else {
+          // Generate from Master Schedule
+          newSchedule[key] = {
+            status: "booked",
+            title: course.title,
+            faculty: course.faculty || "TBA",
+            facultyEmail: course.facultyEmail || "",
+            count: course.capacity || 50,
+            courseId: course.id,
+            requirements: course.accessibilityRequired ? "Lecture, capacity 50+, accessible" : "Synced from Master Schedule",
+            accessibilityRequired: course.accessibilityRequired || false,
+            audit: `Auto-published — ${group.name} (${getDayLabels(courseDays)})`
+          };
         }
-      }
+      });
     });
-  });
+  }
+
+  // Also preserve any manually placed bookings/blocks that aren't part of the master schedule
+  for (let key in existingSchedule) {
+    if (isPreserved(key) && !newSchedule[key]) {
+      newSchedule[key] = existingSchedule[key];
+    }
+  }
+
+  state.cellData[dateStr] = newSchedule;
+
+  // Persist synced schedule to Firestore only if we are the Admin (to avoid student permission errors)
+  if (currentAppMode === 'firebase' && isFirebaseInitialized && state.currentRole === 'admin' && !isSyncingFromFirebase) {
+    saveState('cellData', dateStr);
+  }
 }
 
 // ============================================================================
 // UNIVERSITY CALENDAR
 // ============================================================================
 
+// Calendar view state: which month/year is being displayed
+let calendarViewYear = null;
+let calendarViewMonth = null; // 0-indexed
+
 function renderCalendar() {
   const grid = $("#universityCalendarGrid");
   if (!grid) return;
-  
-  // Hardcoded to May 2026 for demo purposes. May 1st 2026 is a Friday.
-  const daysInMonth = 31;
-  const startDayOfWeek = 5; // Friday (0 = Sun, 1 = Mon)
-  
-  let html = "";
-  
-  // Empty slots before May 1st
-  for (let i = 0; i < startDayOfWeek; i++) {
-    html += `<div class="calendar-day empty"></div>`;
-  }
-  
+
+  // Initialise view from currentDate if not set
+  const refDate = new Date(state.currentDate);
+  if (calendarViewYear === null) calendarViewYear = refDate.getFullYear();
+  if (calendarViewMonth === null) calendarViewMonth = refDate.getMonth();
+
+  const MONTH_NAMES = ['January','February','March','April','May','June',
+                       'July','August','September','October','November','December'];
+  const label = $("#calendarMonthLabel");
+  if (label) label.textContent = `${MONTH_NAMES[calendarViewMonth]} ${calendarViewYear}`;
+
+  const firstDay = new Date(calendarViewYear, calendarViewMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(calendarViewYear, calendarViewMonth + 1, 0).getDate();
+
+  let html = '';
+
+  // Empty cells before month start (shift so Monday = col 0)
+  const startOffset = (firstDay + 6) % 7; // Mon-first grid
+  for (let i = 0; i < startOffset; i++) html += `<div class="calendar-day empty"></div>`;
+
   for (let i = 1; i <= daysInMonth; i++) {
-    const dateStr = `2026-05-${i.toString().padStart(2, '0')}`;
-    const d = new Date(dateStr);
-    const dayOfWeek = d.getDay();
-    
-    const isHoliday = state.calendarConfig.events.some(e => e.date === dateStr && e.type === "holiday");
-    const isExam = state.calendarConfig.events.some(e => e.date === dateStr && e.type === "exam");
-    const holidayEvent = state.calendarConfig.events.find(e => e.date === dateStr);
-    const isWeekend = state.calendarConfig.offDays.includes(dayOfWeek);
-    let isActive = dateStr === state.currentDate;
-    
-    let classes = "calendar-day";
-    if (isHoliday) classes += " holiday";
-    else if (isExam) classes += " exam";
-    if (isActive) classes += " active-day";
-    
-    let eventsHtml = "";
-    if (isHoliday) {
-      eventsHtml += `<div class="calendar-event">${holidayEvent.name}</div>`;
-    } else if (isExam) {
-      eventsHtml += `<div class="calendar-event">${holidayEvent.name}</div>`;
+    const mm = String(calendarViewMonth + 1).padStart(2, '0');
+    const dd = String(i).padStart(2, '0');
+    const dateStr = `${calendarViewYear}-${mm}-${dd}`;
+    const dayOfWeek = new Date(dateStr).getDay();
+
+    const eventOnDay = (state.calendarConfig.events || []).find(e => e.date === dateStr);
+    const isHoliday = eventOnDay?.type === 'holiday';
+    const isExam = eventOnDay?.type === 'exam';
+    const isWeekend = (state.calendarConfig.offDays || []).includes(dayOfWeek);
+    const isActive = dateStr === state.currentDate;
+
+    let classes = 'calendar-day';
+    if (isHoliday) classes += ' holiday';
+    else if (isExam) classes += ' exam';
+    else if (isWeekend) classes += ' weekend';
+    if (isActive) classes += ' active-day';
+
+    let eventsHtml = '';
+    if (eventOnDay) {
+      eventsHtml = `<div class="calendar-event">${eventOnDay.name}</div>`;
     } else if (!isWeekend) {
-      // Calculate how many courses run this day
+      // Count master schedule courses that run this day
       let count = 0;
-      const targetDay = (dayOfWeek + 10).toString();
-      mockSlotGroups.forEach(group => {
-        const blocks = group.pattern.split("+").map(s => s.trim());
-        blocks.forEach(block => {
-          if (block.endsWith(targetDay)) count += group.courses.length;
+      mockSlotGroups.forEach(g => {
+        g.courses.forEach(c => {
+          if ((c.days || []).includes(dayOfWeek)) count++;
         });
       });
-      eventsHtml += `<div class="calendar-event" style="background:#eff6ff; color:var(--primary);">${count} scheduled classes</div>`;
+      if (count > 0) {
+        eventsHtml = `<div class="calendar-event" style="background:#eff6ff;color:var(--primary);">${count} class${count!==1?'es':''}</div>`;
+      }
     }
-    
+
     html += `
       <div class="${classes}" onclick="selectCalendarDate('${dateStr}')">
         <div class="day-num">${i}</div>
         <div class="day-events">${eventsHtml}</div>
-      </div>
-    `;
+      </div>`;
   }
-  
+
   grid.innerHTML = html;
+}
+
+// Wire up prev/next month buttons directly
+const prevBtn = $("#calPrevMonthBtn");
+if (prevBtn) {
+  prevBtn.onclick = () => {
+    if (calendarViewMonth === null) { calendarViewMonth = new Date(state.currentDate).getMonth(); calendarViewYear = new Date(state.currentDate).getFullYear(); }
+    calendarViewMonth--;
+    if (calendarViewMonth < 0) { calendarViewMonth = 11; calendarViewYear--; }
+    renderCalendar();
+  };
+}
+const nextBtn = $("#calNextMonthBtn");
+if (nextBtn) {
+  nextBtn.onclick = () => {
+    if (calendarViewMonth === null) { calendarViewMonth = new Date(state.currentDate).getMonth(); calendarViewYear = new Date(state.currentDate).getFullYear(); }
+    calendarViewMonth++;
+    if (calendarViewMonth > 11) { calendarViewMonth = 0; calendarViewYear++; }
+    renderCalendar();
+  };
 }
 
 window.selectCalendarDate = function(dateStr) {
@@ -4130,6 +4886,18 @@ let isFirebaseInitialized = false;
 let fbAuth = null;
 let fbDb = null;
 let isSyncingFromFirebase = false;
+let firebaseUnsubscribers = [];
+
+function resetFirebaseListeners() {
+  firebaseUnsubscribers.forEach(unsubscribe => {
+    try {
+      if (typeof unsubscribe === "function") unsubscribe();
+    } catch (err) {
+      console.warn("Failed to detach Firebase listener:", err);
+    }
+  });
+  firebaseUnsubscribers = [];
+}
 
 // 1. Initial configuration check & load
 let activeFbConfig = { ...firebaseConfig };
@@ -4177,8 +4945,9 @@ document.addEventListener("DOMContentLoaded", () => {
     modeFirebaseBtn?.classList.remove("active");
   }
   
-  // Update status indicator
+  // Update status indicator & demo login elements
   updateFirebaseStatusIndicator();
+  toggleLoginDemoElements();
   
   // Event listeners for mode selector
   modeOfflineBtn?.addEventListener("click", () => {
@@ -4187,6 +4956,8 @@ document.addEventListener("DOMContentLoaded", () => {
     modeOfflineBtn.classList.add("active");
     modeFirebaseBtn.classList.remove("active");
     updateFirebaseStatusIndicator();
+    toggleLoginDemoElements();
+    checkUniversityRegistration(); // run check
     populateAllDynamicUI(); // Revert filters/slots to offline configurations if needed
     showToast("Switched to Offline Demo mode.");
   });
@@ -4201,6 +4972,8 @@ document.addEventListener("DOMContentLoaded", () => {
     modeOfflineBtn.classList.remove("active");
     modeFirebaseBtn.classList.add("active");
     updateFirebaseStatusIndicator();
+    toggleLoginDemoElements();
+    checkUniversityRegistration(); // run check
     showToast("Switched to Firebase Live mode.");
   });
   
@@ -4217,6 +4990,33 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       firebaseIndicator.style.background = "#94a3b8"; // grey
       firebaseStatusText.innerText = "Firebase not configured (offline fallback).";
+    }
+  }
+
+  function toggleLoginDemoElements() {
+    const isFirebase = (currentAppMode === "firebase" && isFirebaseInitialized);
+    const personaGrid = document.querySelector(".login-role-grid");
+    const helperText = document.querySelector("#signInPanel .helper");
+    const demoAutoFillText = document.querySelector("#signInPanel p.helper");
+    const emailInput = document.getElementById("loginEmail");
+    const passwordInput = document.getElementById("loginPassword");
+
+    if (isFirebase) {
+      if (personaGrid) personaGrid.style.display = "none";
+      if (helperText) helperText.innerText = "Enter your university credentials to sign in.";
+      if (demoAutoFillText) demoAutoFillText.style.visibility = "hidden";
+      
+      // Clear demo credentials to let user type clean
+      if (emailInput && emailInput.value === "admin@univ.edu") emailInput.value = "";
+      if (passwordInput && passwordInput.value === "admin123") passwordInput.value = "";
+    } else {
+      if (personaGrid) personaGrid.style.display = "grid";
+      if (helperText) helperText.innerText = "Pick a role below to open the right workspace.";
+      if (demoAutoFillText) demoAutoFillText.style.visibility = "visible";
+      
+      // Set default demo admin on switch back to offline
+      if (emailInput && !emailInput.value) emailInput.value = "admin@univ.edu";
+      if (passwordInput && !passwordInput.value) passwordInput.value = "admin123";
     }
   }
 
@@ -4260,6 +5060,83 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => { window.location.reload(); }, 1500);
   });
 
+  // Toggles for Registration Panel <=> Login Panel
+  const goToRegister = document.getElementById("goToRegisterLink");
+  const backToLogin = document.getElementById("backToLoginLink");
+  const signInPanel = document.getElementById("signInPanel");
+  const registerPanel = document.getElementById("registerPanel");
+
+  goToRegister?.addEventListener("click", (e) => {
+    e.preventDefault();
+    signInPanel?.classList.add("hidden");
+    registerPanel?.classList.remove("hidden");
+  });
+
+  backToLogin?.addEventListener("click", (e) => {
+    e.preventDefault();
+    registerPanel?.classList.add("hidden");
+    signInPanel?.classList.remove("hidden");
+  });
+
+  // User Directory filter & search event listeners
+  document.getElementById("userDirectorySearch")?.addEventListener("input", renderUserDirectory);
+  document.getElementById("userDirectoryRoleFilter")?.addEventListener("change", renderUserDirectory);
+
+  // File input change listeners for separate Faculty and Student uploads
+  document.getElementById("facultyBulkUploadInput")?.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) processBulkUpload(file, "faculty");
+  });
+
+  document.getElementById("studentBulkUploadInput")?.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) processBulkUpload(file, "student");
+  });
+
+  // Manual User Creation button listener
+  document.getElementById("submitAddUserBtn")?.addEventListener("click", submitAddUser);
+
+  // Check University signup configuration on boot
+  checkUniversityRegistration();
+
+  // Restore Firebase session on boot if logged in
+  if (currentAppMode === 'firebase' && isFirebaseInitialized) {
+    fbAuth.onAuthStateChanged(async (user) => {
+      if (user) {
+        const lowerEmail = (user.email || "").toLowerCase();
+        console.log("Firebase Session Restored:", lowerEmail);
+        try {
+          const userDoc = await fbDb.collection('users').doc(lowerEmail).get();
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            state.currentUserProfile = userData;
+            
+            // Load university branding/details from tenant-scoped namespace
+            const customerId = userData.customerId;
+            if (customerId) {
+              const uniDoc = await fbDb.collection('customers').doc(customerId).collection('config').doc('university').get();
+              if (uniDoc.exists) {
+                state.university = uniDoc.data();
+                applyDynamicBranding(state.university);
+              }
+            }
+            
+            await seedFirestoreIfEmpty();
+            await firebaseLoad();
+            setupFirebaseListeners();
+            populateAllDynamicUI();
+            
+            document.body.classList.remove('show-login');
+            updateDateDisplay();
+            setRole(userData.role || 'student');
+          }
+        } catch (err) {
+          console.error("Firebase session restore error:", err);
+        }
+      }
+    });
+  }
+
   // Run dynamic UI populator initially
   populateAllDynamicUI();
 });
@@ -4274,7 +5151,8 @@ setTimeout(() => {
   loginSubmit.parentNode.replaceChild(newLoginSubmit, loginSubmit);
   
   newLoginSubmit.addEventListener('click', async () => {
-    const email = document.getElementById('loginEmail')?.value.trim();
+    const rawEmail = document.getElementById('loginEmail')?.value.trim() || "";
+    const email = rawEmail.toLowerCase();
     const password = document.getElementById('loginPassword')?.value;
     
     if (currentAppMode === 'firebase' && isFirebaseInitialized) {
@@ -4291,6 +5169,17 @@ setTimeout(() => {
         if (userDoc.exists) {
           const userData = userDoc.data();
           const role = userData.role || 'student';
+          state.currentUserProfile = userData;
+          
+          // Discover customerId and load university branding
+          const customerId = userData.customerId;
+          if (customerId) {
+            const uniDoc = await fbDb.collection('customers').doc(customerId).collection('config').doc('university').get();
+            if (uniDoc.exists) {
+              state.university = uniDoc.data();
+              applyDynamicBranding(state.university);
+            }
+          }
           
           console.log(`Firebase authenticated user ${email} with persona: ${role}`);
           
@@ -4312,13 +5201,10 @@ setTimeout(() => {
           setRole(role);
           showToast(`Logged in to Firebase as ${userData.name || email} (${role.toUpperCase()})`);
         } else {
-          // If auth succeeds but user doc is missing, try default role check
           console.warn("Auth user found, but Firestore user document is missing.");
-          showToast("Authenticated, but profile not found in database.");
-          // Fall back to offline login role selection
-          document.body.classList.remove('show-login');
-          updateDateDisplay();
-          setRole(pendingLoginRole);
+          showToast("Authenticated, but no CampusGrid profile exists for this user. Ask an admin to add them.");
+          await fbAuth.signOut();
+          state.currentUserProfile = null;
         }
       } catch (err) {
         console.error("Firebase Login failed:", err);
@@ -4374,64 +5260,84 @@ function populateAllDynamicUI() {
   }
 }
 
+// Tenant-scoped database reference helper
+function getTenantRef(collectionName) {
+  const customerId = (state.currentUserProfile && state.currentUserProfile.customerId) || (state.university && state.university.customerId);
+  if (!customerId) {
+    return fbDb.collection(collectionName);
+  }
+  return fbDb.collection('customers').doc(customerId).collection(collectionName);
+}
+
 // 3. Sync helpers
 function saveState(dataType, key = null) {
   if (isSyncingFromFirebase) return; // Prevent write loops
   if (currentAppMode === 'firebase' && isFirebaseInitialized) {
     try {
+      const tenantRef = getTenantRef(dataType);
       if (dataType === 'cellData') {
         const dates = key ? [key] : Object.keys(state.cellData);
         dates.forEach(date => {
-          fbDb.collection('schedules').doc(date).set(state.cellData[date] || {});
+          tenantRef.doc(date).set(state.cellData[date] || {});
         });
       } else if (dataType === 'unassignedClasses') {
         const dates = key ? [key] : Object.keys(state.unassignedClasses);
         dates.forEach(date => {
-          fbDb.collection('unassigned').doc(date).set({ list: state.unassignedClasses[date] || [] });
+          tenantRef.doc(date).set({ list: state.unassignedClasses[date] || [] });
+        });
+      } else if (dataType === 'suspendedClasses') {
+        const dates = key ? [key] : Object.keys(state.suspendedClasses);
+        dates.forEach(date => {
+          const list = state.suspendedClasses[date] || [];
+          if (list.length > 0) {
+            tenantRef.doc(date).set({ list });
+          } else {
+            tenantRef.doc(date).delete();
+          }
         });
       } else if (dataType === 'issues') {
         if (key) {
           const issue = state.issues.find(i => i.id === key);
           if (issue) {
-            fbDb.collection('issues').doc(key).set(issue);
+            tenantRef.doc(key).set(issue);
           } else {
-            fbDb.collection('issues').doc(key).delete();
+            tenantRef.doc(key).delete();
           }
         } else {
           state.issues.forEach(issue => {
-            fbDb.collection('issues').doc(issue.id).set(issue);
+            tenantRef.doc(issue.id).set(issue);
           });
         }
       } else if (dataType === 'approvalRequests') {
         if (key) {
           const req = state.approvalRequests.find(r => r.id === key);
           if (req) {
-            fbDb.collection('approvalRequests').doc(key).set(req);
+            tenantRef.doc(key).set(req);
           } else {
-            fbDb.collection('approvalRequests').doc(key).delete();
+            tenantRef.doc(key).delete();
           }
         } else {
           state.approvalRequests.forEach(req => {
-            fbDb.collection('approvalRequests').doc(req.id).set(req);
+            tenantRef.doc(req.id).set(req);
           });
         }
       } else if (dataType === 'calendarConfig') {
-        fbDb.collection('config').doc('calendar').set(state.calendarConfig);
+        getTenantRef('config').doc('calendar').set(state.calendarConfig);
       } else if (dataType === 'buildings') {
-        fbDb.collection('config').doc('buildings').set({ list: state.buildings });
+        getTenantRef('config').doc('buildings').set({ list: state.buildings });
       } else if (dataType === 'slots') {
-        fbDb.collection('config').doc('slots').set({ list: slotTimes });
+        getTenantRef('config').doc('slots').set({ list: slotTimes });
       } else if (dataType === 'mockSlotGroups') {
         if (key) {
           const group = mockSlotGroups.find(g => g.id === key);
           if (group) {
-            fbDb.collection('masterSchedule').doc(key).set(group);
+            tenantRef.doc(key).set(group);
           } else {
-            fbDb.collection('masterSchedule').doc(key).delete();
+            tenantRef.doc(key).delete();
           }
         } else {
           mockSlotGroups.forEach(group => {
-            fbDb.collection('masterSchedule').doc(group.id).set(group);
+            tenantRef.doc(group.id).set(group);
           });
         }
       }
@@ -4441,48 +5347,74 @@ function saveState(dataType, key = null) {
   }
 }
 
+function clearLocalState() {
+  console.log("Clearing local state to prevent data pollution between tenants...");
+  state.cellData = {};
+  state.unassignedClasses = {};
+  state.issues = [];
+  state.approvalRequests = [];
+  mockSlotGroups.length = 0;
+  state.suspendedClasses = {};
+  state.notifications = [];
+  state.users = [];
+  state.university = null;
+  renderBellNotifications();
+}
+
 // Load from DB
 async function firebaseLoad() {
   if (!isFirebaseInitialized) return;
   isSyncingFromFirebase = true;
   
   try {
+    const customerId = (state.currentUserProfile && state.currentUserProfile.customerId) || (state.university && state.university.customerId);
+    
+    // Clear local state before loading from Firestore
+    clearLocalState();
+
+    
     // 1. Calendar
-    const calDoc = await fbDb.collection('config').doc('calendar').get();
+    const calDoc = await getTenantRef('config').doc('calendar').get();
     if (calDoc.exists) {
       state.calendarConfig = calDoc.data();
     }
     
     // 2. Schedules
-    const schedulesSnap = await fbDb.collection('schedules').get();
+    const schedulesSnap = await getTenantRef('cellData').get();
     schedulesSnap.forEach(doc => {
       state.cellData[doc.id] = doc.data();
     });
     
     // 3. Unassigned
-    const unassignedSnap = await fbDb.collection('unassigned').get();
+    const unassignedSnap = await getTenantRef('unassignedClasses').get();
     unassignedSnap.forEach(doc => {
       state.unassignedClasses[doc.id] = doc.data().list || [];
     });
+
+    // 4. Suspended classes for active exam-period workflows
+    const suspendedSnap = await getTenantRef('suspendedClasses').get();
+    suspendedSnap.forEach(doc => {
+      state.suspendedClasses[doc.id] = doc.data().list || [];
+    });
     
-    // 4. Issues
-    const issuesSnap = await fbDb.collection('issues').get();
+    // 5. Issues
+    const issuesSnap = await getTenantRef('issues').get();
     const loadedIssues = [];
     issuesSnap.forEach(doc => {
       loadedIssues.push(doc.data());
     });
     if (loadedIssues.length > 0) state.issues = loadedIssues;
     
-    // 5. Approvals
-    const approvalsSnap = await fbDb.collection('approvalRequests').get();
+    // 6. Approvals
+    const approvalsSnap = await getTenantRef('approvalRequests').get();
     const loadedApprovals = [];
     approvalsSnap.forEach(doc => {
       loadedApprovals.push(doc.data());
     });
     if (loadedApprovals.length > 0) state.approvalRequests = loadedApprovals;
     
-    // 6. Master schedule
-    const masterSnap = await fbDb.collection('masterSchedule').get();
+    // 7. Master schedule
+    const masterSnap = await getTenantRef('mockSlotGroups').get();
     const loadedMaster = [];
     masterSnap.forEach(doc => {
       loadedMaster.push(doc.data());
@@ -4492,14 +5424,14 @@ async function firebaseLoad() {
       loadedMaster.forEach(item => mockSlotGroups.push(item));
     }
 
-    // 7. Buildings (Infrastructure)
-    const bldDoc = await fbDb.collection('config').doc('buildings').get();
+    // 8. Buildings (Infrastructure)
+    const bldDoc = await getTenantRef('config').doc('buildings').get();
     if (bldDoc.exists) {
       state.buildings = bldDoc.data().list || [];
     }
 
-    // 8. Slots configuration
-    const slotsDoc = await fbDb.collection('config').doc('slots').get();
+    // 9. Slots configuration
+    const slotsDoc = await getTenantRef('config').doc('slots').get();
     if (slotsDoc.exists) {
       const loadedSlots = slotsDoc.data().list || [];
       if (loadedSlots.length > 0) {
@@ -4507,6 +5439,19 @@ async function firebaseLoad() {
         loadedSlots.forEach(s => slotTimes.push(s));
       }
     }
+    
+    // 10. Users roster config (Filtered by customerId)
+    let usersSnap;
+    if (customerId) {
+      usersSnap = await fbDb.collection('users').where('customerId', '==', customerId).get();
+    } else {
+      usersSnap = await fbDb.collection('users').get();
+    }
+    const loadedUsers = [];
+    usersSnap.forEach(doc => {
+      loadedUsers.push(doc.data());
+    });
+    state.users = loadedUsers;
     
     console.log("State successfully loaded from Firestore.");
   } catch (err) {
@@ -4519,9 +5464,12 @@ async function firebaseLoad() {
 // Real-time listener setups
 function setupFirebaseListeners() {
   if (!isFirebaseInitialized) return;
+  resetFirebaseListeners();
+  
+  const customerId = (state.currentUserProfile && state.currentUserProfile.customerId) || (state.university && state.university.customerId);
   
   // Schedules listener
-  fbDb.collection('schedules').onSnapshot(snap => {
+  firebaseUnsubscribers.push(getTenantRef('cellData').onSnapshot(snap => {
     if (isSyncingFromFirebase) return;
     isSyncingFromFirebase = true;
     let changed = false;
@@ -4533,10 +5481,10 @@ function setupFirebaseListeners() {
     });
     isSyncingFromFirebase = false;
     if (changed) refreshActiveViews();
-  });
+  }));
   
   // Unassigned listener
-  fbDb.collection('unassigned').onSnapshot(snap => {
+  firebaseUnsubscribers.push(getTenantRef('unassignedClasses').onSnapshot(snap => {
     if (isSyncingFromFirebase) return;
     isSyncingFromFirebase = true;
     let changed = false;
@@ -4548,10 +5496,61 @@ function setupFirebaseListeners() {
     });
     isSyncingFromFirebase = false;
     if (changed) refreshActiveViews();
-  });
+  }));
+
+  // Suspended classes listener
+  firebaseUnsubscribers.push(getTenantRef('suspendedClasses').onSnapshot(snap => {
+    if (isSyncingFromFirebase) return;
+    isSyncingFromFirebase = true;
+    let changed = false;
+    snap.docChanges().forEach(change => {
+      if (change.type === "added" || change.type === "modified") {
+        state.suspendedClasses[change.doc.id] = change.doc.data().list || [];
+        changed = true;
+      } else if (change.type === "removed") {
+        delete state.suspendedClasses[change.doc.id];
+        changed = true;
+      }
+    });
+    isSyncingFromFirebase = false;
+    if (changed) {
+      updateExamPeriodBanner();
+      refreshActiveViews();
+    }
+  }));
+
+  // Master schedule (mockSlotGroups) listener
+  firebaseUnsubscribers.push(getTenantRef('mockSlotGroups').onSnapshot(snap => {
+    if (isSyncingFromFirebase) return;
+    isSyncingFromFirebase = true;
+    let changed = false;
+    snap.docChanges().forEach(change => {
+      const groupData = change.doc.data();
+      const idx = mockSlotGroups.findIndex(g => g.id === change.doc.id);
+      if (change.type === "added" || change.type === "modified") {
+        if (idx !== -1) {
+          mockSlotGroups[idx] = groupData;
+        } else {
+          mockSlotGroups.push(groupData);
+        }
+        changed = true;
+      } else if (change.type === "removed") {
+        if (idx !== -1) {
+          mockSlotGroups.splice(idx, 1);
+          changed = true;
+        }
+      }
+    });
+    if (changed) {
+      mockSlotGroups.sort((a, b) => a.slotIndex - b.slotIndex);
+      syncMasterScheduleToDaily();
+      refreshActiveViews();
+    }
+    isSyncingFromFirebase = false;
+  }));
 
   // Issues listener
-  fbDb.collection('issues').onSnapshot(snap => {
+  firebaseUnsubscribers.push(getTenantRef('issues').onSnapshot(snap => {
     if (isSyncingFromFirebase) return;
     isSyncingFromFirebase = true;
     let changed = false;
@@ -4574,10 +5573,10 @@ function setupFirebaseListeners() {
     });
     isSyncingFromFirebase = false;
     if (changed) refreshActiveViews();
-  });
+  }));
 
   // Approvals listener
-  fbDb.collection('approvalRequests').onSnapshot(snap => {
+  firebaseUnsubscribers.push(getTenantRef('approvalRequests').onSnapshot(snap => {
     if (isSyncingFromFirebase) return;
     isSyncingFromFirebase = true;
     let changed = false;
@@ -4600,10 +5599,10 @@ function setupFirebaseListeners() {
     });
     isSyncingFromFirebase = false;
     if (changed) refreshActiveViews();
-  });
+  }));
 
   // Buildings config listener
-  fbDb.collection('config').doc('buildings').onSnapshot(doc => {
+  firebaseUnsubscribers.push(getTenantRef('config').doc('buildings').onSnapshot(doc => {
     if (isSyncingFromFirebase) return;
     if (doc.exists) {
       isSyncingFromFirebase = true;
@@ -4613,10 +5612,10 @@ function setupFirebaseListeners() {
       populateAllDynamicUI();
       refreshActiveViews();
     }
-  });
+  }));
 
   // Slots config listener
-  fbDb.collection('config').doc('slots').onSnapshot(doc => {
+  firebaseUnsubscribers.push(getTenantRef('config').doc('slots').onSnapshot(doc => {
     if (isSyncingFromFirebase) return;
     if (doc.exists) {
       const loadedSlots = doc.data().list || [];
@@ -4630,7 +5629,39 @@ function setupFirebaseListeners() {
         if (typeof renderSlotConfig === 'function') renderSlotConfig();
       }
     }
-  });
+  }));
+
+  // Users listener (Filtered by customerId)
+  let usersQuery = fbDb.collection('users');
+  if (customerId) {
+    usersQuery = usersQuery.where('customerId', '==', customerId);
+  }
+  firebaseUnsubscribers.push(usersQuery.onSnapshot(snap => {
+    if (isSyncingFromFirebase) return;
+    isSyncingFromFirebase = true;
+    let changed = false;
+    snap.docChanges().forEach(change => {
+      const userData = change.doc.data();
+      const idx = state.users.findIndex(u => u.email === change.doc.id);
+      if (change.type === "added" || change.type === "modified") {
+        if (idx !== -1) {
+          state.users[idx] = userData;
+        } else {
+          state.users.push(userData);
+        }
+        changed = true;
+      } else if (change.type === "removed") {
+        if (idx !== -1) {
+          state.users.splice(idx, 1);
+          changed = true;
+        }
+      }
+    });
+    isSyncingFromFirebase = false;
+    if (changed) {
+      if (typeof renderUserDirectory === 'function') renderUserDirectory();
+    }
+  }));
 }
 
 function refreshActiveViews() {
@@ -4647,101 +5678,93 @@ function refreshActiveViews() {
   }
 }
 
+// Initializer for fresh university registrations
+async function initializeFreshUniversity(customerId) {
+  try {
+    console.log(`Initializing fresh tenant space for [${customerId}]...`);
+    const tenantRef = fbDb.collection('customers').doc(customerId);
+    
+    // Seed only default infrastructure configuration (rooms, slots, calendar) with empty events
+    const freshCalendarConfig = {
+      termStart: state.calendarConfig.termStart || "2026-05-01",
+      termEnd: state.calendarConfig.termEnd || "2026-12-15",
+      offDays: state.calendarConfig.offDays || [0, 6],
+      events: [] // A fresh institution starts with no pre-filled holidays/exams
+    };
+
+    await tenantRef.collection('config').doc('calendar').set(freshCalendarConfig);
+    await tenantRef.collection('config').doc('buildings').set({ list: state.buildings });
+    await tenantRef.collection('config').doc('slots').set({ list: slotTimes });
+    
+    // Do NOT write any schedules, unassigned classes, issues, approvals or mock slot groups.
+    // This allows the registered university to start with a completely fresh and clean cockpit.
+    
+    console.log(`Fresh tenant space [${customerId}] initialized successfully!`);
+  } catch (err) {
+    console.error("Fresh university initialization failed:", err);
+  }
+}
+
 // Seeder logic
 async function seedFirestoreIfEmpty() {
   try {
-    const doc = await fbDb.collection('config').doc('calendar').get();
+    const customerId = (state.currentUserProfile && state.currentUserProfile.customerId) || (state.university && state.university.customerId);
+    if (!customerId) return;
+
+    // Only seed mock schedules/courses/issues if this is the DEMO tenant
+    if (customerId !== "CUST-DEMO77") {
+      console.log(`[${customerId}] is a custom tenant. Skipping mock data seeding.`);
+      return;
+    }
+
+    const doc = await fbDb.collection('customers').doc(customerId).collection('config').doc('calendar').get();
     if (!doc.exists) {
-      console.log("Firestore is empty. Seeding initial mock data...");
+      console.log(`Tenant space [${customerId}] is empty. Seeding initial mock data...`);
       
-      await fbDb.collection('config').doc('calendar').set(state.calendarConfig);
-      await fbDb.collection('config').doc('buildings').set({ list: state.buildings });
-      await fbDb.collection('config').doc('slots').set({ list: slotTimes });
+      const tenantRef = fbDb.collection('customers').doc(customerId);
+      
+      await tenantRef.collection('config').doc('calendar').set(state.calendarConfig);
+      await tenantRef.collection('config').doc('buildings').set({ list: state.buildings });
+      await tenantRef.collection('config').doc('slots').set({ list: slotTimes });
       
       for (const date in state.cellData) {
-        await fbDb.collection('schedules').doc(date).set(state.cellData[date]);
+        await tenantRef.collection('cellData').doc(date).set(state.cellData[date]);
       }
       
       for (const date in state.unassignedClasses) {
-        await fbDb.collection('unassigned').doc(date).set({ list: state.unassignedClasses[date] });
+        await tenantRef.collection('unassignedClasses').doc(date).set({ list: state.unassignedClasses[date] });
       }
       
       for (const issue of state.issues) {
-        await fbDb.collection('issues').doc(issue.id).set(issue);
+        await tenantRef.collection('issues').doc(issue.id).set(issue);
       }
       
       for (const req of state.approvalRequests) {
-        await fbDb.collection('approvalRequests').doc(req.id).set(req);
+        await tenantRef.collection('approvalRequests').doc(req.id).set(req);
       }
       
       for (const group of mockSlotGroups) {
-        await fbDb.collection('masterSchedule').doc(group.id).set(group);
+        await tenantRef.collection('mockSlotGroups').doc(group.id).set(group);
       }
       
       const mockUsers = [
-        { email: "admin@univ.edu", name: "Varun Sharma (Admin)", role: "admin" },
-        { email: "faculty@univ.edu", name: "Dr. Ananya Mehta", role: "faculty", taughtCourses: ["CS101", "CS102", "CS201-L"] },
-        { email: "facilities@univ.edu", name: "Harpreet Singh", role: "facilities" },
-        { email: "student@univ.edu", name: "Rahul Verma", role: "student", enrolledCourses: ["CS101", "MA201", "PHY204-L"] }
+        { email: "admin@univ.edu", name: "Varun Sharma (Admin)", role: "admin", roles: ["admin"] },
+        { email: "faculty@univ.edu", name: "Dr. Ananya Mehta", role: "faculty", roles: ["faculty"], taughtCourses: ["CS101", "CS102", "CS201-L"] },
+        { email: "facilities@univ.edu", name: "Harpreet Singh", role: "facilities", roles: ["facilities"] },
+        { email: "student@univ.edu", name: "Rahul Verma", role: "student", roles: ["student"], enrolledCourses: ["CS101", "MA201", "PHY204-L"] }
       ];
       
       for (const user of mockUsers) {
-        await fbDb.collection('users').doc(user.email).set(user);
+        await fbDb.collection('users').doc(user.email).set({ ...user, customerId: customerId });
       }
       
-      console.log("Firestore successfully seeded!");
+      console.log(`Tenant space [${customerId}] successfully seeded!`);
     }
   } catch (err) {
     console.error("Firestore Seeding failed:", err);
   }
 }
 
-// Monkey-patch render methods to trigger Firestore updates
-const originalRenderScheduleGrid = renderScheduleGrid;
-renderScheduleGrid = function(...args) {
-  originalRenderScheduleGrid.apply(this, args);
-  saveState('cellData', state.currentDate);
-  saveState('unassignedClasses', state.currentDate);
-};
-
-const originalRenderRequestsScreen = renderRequestsScreen;
-renderRequestsScreen = function(...args) {
-  if (originalRenderRequestsScreen) originalRenderRequestsScreen.apply(this, args);
-  saveState('approvalRequests');
-};
-
-const originalRenderFacilitiesScreen = renderFacilitiesScreen;
-if (originalRenderFacilitiesScreen) {
-  renderFacilitiesScreen = function(...args) {
-    originalRenderFacilitiesScreen.apply(this, args);
-    saveState('issues');
-  };
-}
-
-const originalRenderSettingsScreen = renderSettingsScreen;
-renderSettingsScreen = function(...args) {
-  if (originalRenderSettingsScreen) originalRenderSettingsScreen.apply(this, args);
-  saveState('calendarConfig');
-};
-
-const originalRenderMasterScheduling = renderMasterScheduling;
-renderMasterScheduling = function(...args) {
-  if (originalRenderMasterScheduling) originalRenderMasterScheduling.apply(this, args);
-  saveState('mockSlotGroups');
-};
-
-// Monkey-patches for Dynamic Infrastructure (Buildings & Rooms)
-const originalRenderBuildingsList = renderBuildingsList;
-renderBuildingsList = function(...args) {
-  if (originalRenderBuildingsList) originalRenderBuildingsList.apply(this, args);
-  saveState('buildings');
-};
-
-const originalRenderInfraRooms = renderInfraRooms;
-renderInfraRooms = function(...args) {
-  if (originalRenderInfraRooms) originalRenderInfraRooms.apply(this, args);
-  saveState('buildings');
-};
 
 const originalPopulateInfraBuildingSelect = populateInfraBuildingSelect;
 populateInfraBuildingSelect = function(...args) {
@@ -4749,9 +5772,751 @@ populateInfraBuildingSelect = function(...args) {
   populateAllDynamicUI();
 };
 
-const originalRenderSlotConfig = renderSlotConfig;
-renderSlotConfig = function(...args) {
-  if (originalRenderSlotConfig) originalRenderSlotConfig.apply(this, args);
-  saveState('slots');
+// ============================================================================
+// UNIVERSITY SIGNUP, DYNAMIC BRANDING, AND USER DIRECTORY HELPERS
+// ============================================================================
+
+window.openLoginModal = function() {
+  document.getElementById("loginModal")?.classList.remove("hidden");
+  document.getElementById("registerModal")?.classList.add("hidden");
 };
 
+window.closeLoginModal = function() {
+  document.getElementById("loginModal")?.classList.add("hidden");
+};
+
+window.openRegisterModal = function() {
+  document.getElementById("registerModal")?.classList.remove("hidden");
+  document.getElementById("loginModal")?.classList.add("hidden");
+};
+
+window.closeRegisterModal = function() {
+  document.getElementById("registerModal")?.classList.add("hidden");
+};
+
+async function checkUniversityRegistration() {
+  if (currentAppMode === 'firebase' && isFirebaseInitialized) {
+    try {
+      // Check if there are any users registered in the global users collection.
+      // If none, it means this is a fresh setup and we need the registration screen.
+      const usersSnap = await fbDb.collection('users').limit(1).get();
+      if (!usersSnap.empty) {
+        closeRegisterModal();
+        openLoginModal();
+      } else {
+        // Force register panel if no university is configured yet in live mode
+        openRegisterModal();
+        showToast("Welcome! Please register your university to get started.", "info");
+      }
+    } catch (err) {
+      console.error("Failed to check university registration:", err);
+      closeRegisterModal();
+      closeLoginModal();
+    }
+  } else {
+    // Offline mode: load from localStorage
+    const savedUni = localStorage.getItem("campusgrid_offline_uni");
+    if (savedUni) {
+      const parsedUni = JSON.parse(savedUni);
+      if (parsedUni.customerId !== "CUST-DEMO77") {
+        clearLocalState();
+        state.university = parsedUni;
+        // Provision default offline admin profile
+        const adminUser = {
+          email: "admin@univ.edu",
+          name: "University Admin",
+          role: "admin",
+          roles: ["admin"],
+          customerId: parsedUni.customerId
+        };
+        state.currentUserProfile = adminUser;
+        state.users = [adminUser];
+        state.calendarConfig = {
+          termStart: "2026-05-01",
+          termEnd: "2026-12-15",
+          offDays: [0, 6],
+          events: []
+        };
+      } else {
+        state.university = parsedUni;
+      }
+    } else {
+      state.university = {
+        name: "University of Bharat",
+        shortName: "UNIVERSITY",
+        code: "CG",
+        customerId: "CUST-DEMO77"
+      };
+    }
+    applyDynamicBranding(state.university);
+    closeRegisterModal();
+    closeLoginModal();
+  }
+}
+
+function applyDynamicBranding(uniData) {
+  if (!uniData) return;
+  const loginUniName = document.getElementById("loginUniName");
+  if (loginUniName) loginUniName.innerText = (uniData.name || "University of Bharat").toUpperCase();
+
+  const sidebarUniName = document.getElementById("sidebarUniName");
+  if (sidebarUniName) sidebarUniName.innerText = (uniData.shortName || "UNIVERSITY").toUpperCase();
+
+  const loginBrandMark = document.getElementById("loginBrandMark");
+  if (loginBrandMark) loginBrandMark.innerText = (uniData.code || "CG").toUpperCase();
+
+  const customerIdBadge = document.getElementById("settingsCustomerIdBadge");
+  if (customerIdBadge) {
+    if (uniData.customerId) {
+      customerIdBadge.innerText = `Customer ID: ${uniData.customerId}`;
+      customerIdBadge.style.display = 'block';
+    } else {
+      customerIdBadge.style.display = 'none';
+    }
+  }
+}
+
+// Register University submission click listener
+const regSubmitBtn = document.getElementById('registerSubmit');
+if (regSubmitBtn) {
+  const newRegSubmit = regSubmitBtn.cloneNode(true);
+  regSubmitBtn.parentNode.replaceChild(newRegSubmit, regSubmitBtn);
+  
+  newRegSubmit.addEventListener('click', async () => {
+    const name = document.getElementById('regUniName')?.value.trim();
+    const shortName = document.getElementById('regUniShort')?.value.trim();
+    const code = document.getElementById('regUniCode')?.value.trim();
+    const rawEmail = document.getElementById('regAdminEmail')?.value.trim() || "";
+    const email = rawEmail.toLowerCase();
+    const password = document.getElementById('regAdminPassword')?.value;
+
+    if (!name || !shortName || !code || !email || !password) {
+      showToast("All fields are required to register!");
+      return;
+    }
+
+    newRegSubmit.innerText = "Registering...";
+    newRegSubmit.disabled = true;
+
+    try {
+      if (currentAppMode === 'firebase' && isFirebaseInitialized) {
+        // 1. Create firebase auth user
+        const userCredential = await fbAuth.createUserWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        // Generate customer ID
+        const customerId = "CUST-" + Math.floor(100000 + Math.random() * 900000);
+
+        // 2. Save university config under tenant space
+        const uniData = { name, shortName, code, customerId };
+        await fbDb.collection('customers').doc(customerId).collection('config').doc('university').set(uniData);
+        state.university = uniData;
+
+        // 3. Save admin user profile to firestore
+        const adminUserData = {
+          email: email,
+          name: "University Admin",
+          role: "admin",
+          roles: ["admin"],
+          customerId: customerId,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        await fbDb.collection('users').doc(email).set(adminUserData);
+        state.currentUserProfile = adminUserData;
+
+        // 4. Initialize fresh university tenant space
+        await initializeFreshUniversity(customerId);
+
+        // 5. Load Firestore state and listen to updates
+        await firebaseLoad();
+        setupFirebaseListeners();
+
+        // 6. Update branding & UI
+        applyDynamicBranding(state.university);
+        populateAllDynamicUI();
+
+        // 7. Log in
+        document.body.classList.remove('show-login');
+        updateDateDisplay();
+        setRole('admin');
+        showToast(`University registered and Admin account created successfully!`);
+      } else {
+        // Offline mode demo registration
+        const customerId = "CUST-" + Math.floor(100000 + Math.random() * 900000);
+        
+        // Clear local state first to prevent data leakage/pollution
+        clearLocalState();
+        
+        const uniData = { name, shortName, code, customerId };
+        state.university = uniData;
+        localStorage.setItem("campusgrid_offline_uni", JSON.stringify(uniData));
+
+        // Create an empty fresh calendar config
+        state.calendarConfig = {
+          termStart: "2026-05-01",
+          termEnd: "2026-12-15",
+          offDays: [0, 6],
+          events: []
+        };
+
+        // Ensure local user exists
+        const adminUser = {
+          email: email,
+          name: "University Admin",
+          role: "admin",
+          roles: ["admin"],
+          customerId: customerId
+        };
+        state.currentUserProfile = adminUser;
+        state.users = [adminUser];
+
+        applyDynamicBranding(uniData);
+        document.body.classList.remove('show-login');
+        updateDateDisplay();
+        setRole('admin');
+        showToast(`Offline Demo: University registered successfully!`);
+      }
+    } catch (err) {
+      console.error("Registration failed:", err);
+      showToast(`Registration Failed: ${err.message}`);
+    } finally {
+      newRegSubmit.innerText = "Create Portal & Account";
+      newRegSubmit.disabled = false;
+    }
+  });
+}
+
+window.renderUserDirectory = function() {
+  const container = document.getElementById("userDirectoryListContainer");
+  if (!container) return;
+
+  const searchQuery = document.getElementById("userDirectorySearch")?.value.trim().toLowerCase() || "";
+  const roleFilter = document.getElementById("userDirectoryRoleFilter")?.value || "all";
+
+  // Filter users
+  const filteredUsers = (state.users || []).filter(u => {
+    const matchesSearch = !searchQuery || 
+      (u.name && u.name.toLowerCase().includes(searchQuery)) || 
+      (u.email && u.email.toLowerCase().includes(searchQuery)) ||
+      (u.id && u.id.toLowerCase().includes(searchQuery));
+    
+    const matchesRole = roleFilter === "all" || u.role === roleFilter;
+
+    return matchesSearch && matchesRole;
+  });
+
+  if (filteredUsers.length === 0) {
+    container.innerHTML = `
+      <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">
+        No users found in directory.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filteredUsers.map(u => {
+    const roleColors = {
+      admin: "background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2;",
+      faculty: "background: #eff6ff; color: #3b82f6; border: 1px solid #dbeafe;",
+      facilities: "background: #fef3c7; color: #d97706; border: 1px solid #fef3c7;",
+      student: "background: #f0fdf4; color: #22c55e; border: 1px solid #dcfce7;"
+    };
+    
+    const rolesList = u.roles || [u.role];
+    const rolesLabels = rolesList.map(r => {
+      const roleStyle = roleColors[r] || "background: #f1f5f9; color: #475569;";
+      return `<span style="font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 12px; text-transform: uppercase; margin-right: 4px; ${roleStyle}">${r}</span>`;
+    }).join("");
+
+    return `
+      <div class="table-row" style="grid-template-columns: 2fr 1.5fr 1.7fr 80px; align-items: center; border-bottom: 1px solid var(--line); padding: 12px 16px;">
+        <span style="font-weight: 500; font-size: 13px; color: var(--ink);">${u.name || 'N/A'} ${u.id ? `<span style="font-size: 11px; color: var(--text-muted); font-family: monospace;">(${u.id})</span>` : ''}</span>
+        <span style="color: var(--text-muted); font-size: 13px; font-family: monospace;">${u.email}</span>
+        <span>${rolesLabels}</span>
+        <span style="text-align: right;">
+          <button class="btn sm" style="background: #fff5f5; color: #e11d48; border: 1px solid #ffe4e6; font-size: 11px; font-weight: 600; padding: 4px 8px; cursor: pointer;" onclick="deleteUser('${u.email}')">Delete</button>
+        </span>
+      </div>
+    `;
+  }).join("");
+};
+
+window.deleteUser = async function(email) {
+  const lowerEmail = (email || "").toLowerCase();
+  if (!confirm(`Are you sure you want to delete the user with email ${lowerEmail}?`)) {
+    return;
+  }
+  
+  try {
+    if (currentAppMode === 'firebase' && isFirebaseInitialized) {
+      await fbDb.collection('users').doc(lowerEmail).delete();
+      showToast(`User ${lowerEmail} deleted from database.`);
+    } else {
+      state.users = state.users.filter(u => (u.email || "").toLowerCase() !== lowerEmail);
+      renderUserDirectory();
+      showToast(`Offline Demo: User ${lowerEmail} deleted.`);
+    }
+  } catch (err) {
+    console.error("Failed to delete user:", err);
+    showToast(`Error: ${err.message}`);
+  }
+};
+
+window.openAddUserModal = function() {
+  document.getElementById("addUserModal")?.classList.remove("hidden");
+  // Reset inputs
+  const addUserName = document.getElementById("addUserName");
+  if (addUserName) addUserName.value = "";
+  const addUserEmail = document.getElementById("addUserEmail");
+  if (addUserEmail) addUserEmail.value = "";
+  const addUserPassword = document.getElementById("addUserPassword");
+  if (addUserPassword) addUserPassword.value = "password123";
+  
+  // Reset checkboxes
+  const checkboxes = document.querySelectorAll('input[name="addUserRoles"]');
+  checkboxes.forEach((cb) => {
+    cb.checked = (cb.value === "student"); // Default only Student checked
+  });
+};
+
+window.closeAddUserModal = function() {
+  document.getElementById("addUserModal")?.classList.add("hidden");
+};
+
+window.submitAddUser = async function() {
+  const name = document.getElementById("addUserName")?.value.trim();
+  const rawEmail = document.getElementById("addUserEmail")?.value.trim() || "";
+  const email = rawEmail.toLowerCase();
+  const password = document.getElementById("addUserPassword")?.value;
+  
+  const checkedCheckboxes = Array.from(document.querySelectorAll('input[name="addUserRoles"]:checked'));
+  const roles = checkedCheckboxes.map(cb => cb.value);
+
+  if (!name || !email || !password) {
+    showToast("Name, Email and Password are required fields!");
+    return;
+  }
+  
+  if (roles.length === 0) {
+    showToast("Please check at least one role for this user!");
+    return;
+  }
+
+  const primaryRole = roles[0]; // first checked role
+  const userId = (primaryRole === 'faculty' ? 'FAC-' : primaryRole === 'admin' ? 'ADM-' : primaryRole === 'facilities' ? 'FCL-' : 'STU-') + Math.floor(1000 + Math.random() * 9000);
+
+  const btn = document.getElementById("submitAddUserBtn");
+  if (btn) {
+    btn.innerText = "Creating...";
+    btn.disabled = true;
+  }
+
+  try {
+    if (currentAppMode === 'firebase' && isFirebaseInitialized) {
+      // Create user auth account via secondary app to avoid logging out the admin
+      try {
+        const tempAppName = "TempApp_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+        const tempApp = firebase.initializeApp(activeFbConfig, tempAppName);
+        await tempApp.auth().createUserWithEmailAndPassword(email, password);
+        await tempApp.delete();
+      } catch (authErr) {
+        console.warn("Auth user creation warning:", authErr);
+      }
+
+      // Save user doc to Firestore
+      const newUserDoc = {
+        email: email,
+        name: name,
+        role: primaryRole,
+        roles: roles,
+        id: userId,
+        customerId: state.currentUserProfile?.customerId || state.university?.customerId || "",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      await fbDb.collection('users').doc(email).set(newUserDoc);
+      showToast(`User ${name} successfully created in Firestore.`);
+    } else {
+      // Offline mode save
+      const newUser = {
+        email: email,
+        name: name,
+        role: primaryRole,
+        roles: roles,
+        id: userId
+      };
+      // Overwrite if email exists
+      state.users = state.users.filter(u => (u.email || "").toLowerCase() !== email);
+      state.users.push(newUser);
+      renderUserDirectory();
+      showToast(`Offline Demo: User ${name} created.`);
+    }
+    closeAddUserModal();
+  } catch (err) {
+    console.error("Failed to create user:", err);
+    showToast(`Error: ${err.message}`);
+  } finally {
+    if (btn) {
+      btn.innerText = "Create User";
+      btn.disabled = false;
+    }
+  }
+};
+
+window.processBulkUpload = async function(file, role) {
+  try {
+    const data = await parseExcelOrCsv(file);
+    if (data.length === 0) {
+      showToast("Uploaded sheet is empty!");
+      return;
+    }
+    
+    // Validate required fields
+    const valid = data.every(item => item.email && item.name);
+    if (!valid) {
+      showToast("Invalid format: Each row must contain at least 'Name' and 'Email'.");
+      return;
+    }
+    
+    let count = 0;
+    const customerId = state.currentUserProfile?.customerId || state.university?.customerId || "";
+    
+    if (currentAppMode === 'firebase' && isFirebaseInitialized) {
+      for (const item of data) {
+        const email = item.email.trim().toLowerCase();
+        const name = item.name.trim();
+        const id = item.id ? item.id.trim() : (role === 'faculty' ? 'FAC-' : 'STU-') + Math.floor(1000 + Math.random() * 9000);
+        
+        try {
+          const tempAppName = "TempApp_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+          const tempApp = firebase.initializeApp(activeFbConfig, tempAppName);
+          await tempApp.auth().createUserWithEmailAndPassword(email, "password123");
+          await tempApp.delete();
+        } catch (e) {
+          // Ignore auth issues if user already exists
+        }
+        
+        const userDoc = {
+          email,
+          name,
+          role,
+          roles: [role],
+          id,
+          customerId,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (role === 'faculty' && item.taughtcourses) {
+          userDoc.taughtCourses = item.taughtcourses.split(",").map(c => c.trim()).filter(Boolean);
+        } else if (role === 'student' && item.enrolledcourses) {
+          userDoc.enrolledCourses = item.enrolledcourses.split(",").map(c => c.trim()).filter(Boolean);
+        }
+
+        await fbDb.collection('users').doc(email).set(userDoc);
+        count++;
+      }
+      showToast(`Successfully uploaded ${count} ${role} users to Firebase.`);
+    } else {
+      // Offline mode
+      for (const item of data) {
+        const email = item.email.trim().toLowerCase();
+        const name = item.name.trim();
+        const id = item.id ? item.id.trim() : (role === 'faculty' ? 'FAC-' : 'STU-') + Math.floor(1000 + Math.random() * 9000);
+        
+        const newUser = {
+          email,
+          name,
+          role,
+          roles: [role],
+          id,
+          customerId
+        };
+
+        if (role === 'faculty' && item.taughtcourses) {
+          newUser.taughtCourses = item.taughtcourses.split(",").map(c => c.trim()).filter(Boolean);
+        } else if (role === 'student' && item.enrolledcourses) {
+          newUser.enrolledCourses = item.enrolledcourses.split(",").map(c => c.trim()).filter(Boolean);
+        }
+
+        state.users = state.users.filter(u => (u.email || "").toLowerCase() !== email);
+        state.users.push(newUser);
+        count++;
+      }
+      renderUserDirectory();
+      showToast(`Offline Demo: Uploaded ${count} ${role} users.`);
+    }
+  } catch (err) {
+    console.error("Bulk upload processing failed:", err);
+    showToast(`Upload failed: ${err.message}`);
+  }
+};
+
+window.showFacultyDropdown = function() {
+  const dropdown = document.getElementById("facultyDropdown");
+  if (!dropdown) return;
+  
+  // Get all users who are faculty
+  const facultyUsers = (state.users || []).filter(u => u.role === 'faculty' || (u.roles && u.roles.includes('faculty')));
+  const searchVal = document.getElementById("builderFacultySearch").value.trim().toLowerCase();
+  
+  const filtered = facultyUsers.filter(u => 
+    !searchVal || 
+    (u.name && u.name.toLowerCase().includes(searchVal)) || 
+    (u.email && u.email.toLowerCase().includes(searchVal)) || 
+    (u.id && u.id.toLowerCase().includes(searchVal))
+  );
+  
+  if (filtered.length === 0) {
+    dropdown.innerHTML = `<div style="padding: 10px 12px; color: var(--text-muted); font-size: 13px;">No faculty found</div>`;
+  } else {
+    dropdown.innerHTML = filtered.map(u => `
+      <div class="dropdown-item" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--line); font-size: 13px;" onclick="selectFaculty('${u.name.replace(/'/g, "\\'")}', '${u.email}')">
+        <strong style="display:block; color:var(--ink);">${u.name}</strong>
+        <span style="font-size:11px; color:var(--text-muted); font-family:monospace;">${u.email} ${u.id ? `| ID: ${u.id}` : ''}</span>
+      </div>
+    `).join("");
+  }
+  dropdown.classList.remove("hidden");
+};
+
+window.filterFacultyDropdown = function() {
+  showFacultyDropdown();
+};
+
+window.selectFaculty = function(name, email) {
+  document.getElementById("builderFacultySearch").value = name;
+  document.getElementById("builderFacultyName").value = name;
+  document.getElementById("builderFacultyEmail").value = email;
+  document.getElementById("facultyDropdown").classList.add("hidden");
+  updateLivePreview();
+};
+
+// Close dropdown on click outside
+document.addEventListener("click", (e) => {
+  const dropdown = document.getElementById("facultyDropdown");
+  const searchInput = document.getElementById("builderFacultySearch");
+  if (dropdown && !dropdown.contains(e.target) && e.target !== searchInput) {
+    dropdown.classList.add("hidden");
+  }
+});
+
+let currentCourseStudents = [];
+
+window.handleCourseStudentsUpload = async function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  try {
+    const data = await parseExcelOrCsv(file);
+    if (data.length === 0) {
+      showToast("Uploaded sheet is empty!");
+      return;
+    }
+
+    const valid = data.every(item => item.email && item.name);
+    if (!valid) {
+      showToast("Invalid format: Each row must contain at least 'Name' and 'Email'.");
+      return;
+    }
+
+    currentCourseStudents = data.map(s => ({
+      name: s.name.trim(),
+      email: s.email.trim(),
+      id: s.id ? s.id.trim() : 'STU-' + Math.floor(1000 + Math.random() * 9000)
+    }));
+
+    // Update count in UI
+    const countEl = document.getElementById("builderEnrolledCount");
+    if (countEl) countEl.innerText = `${currentCourseStudents.length} students`;
+
+    // Update preview list
+    const previewEl = document.getElementById("courseStudentsListPreview");
+    if (previewEl) {
+      previewEl.innerHTML = currentCourseStudents.map(s => `
+        <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #f1f5f9;">
+          <span>${s.name} (${s.email})</span>
+          <span style="font-family:monospace; color:var(--text-muted);">${s.id}</span>
+        </div>
+      `).join("");
+    }
+
+    showToast(`Imported ${currentCourseStudents.length} students for this course.`);
+  } catch (err) {
+    console.error("Course students upload failed:", err);
+    showToast(`Failed to parse file: ${err.message}`);
+  }
+};
+
+// Sign Out click handler via event delegation
+document.addEventListener('click', e => {
+  const btn = e.target.closest('#signOutBtn');
+  if (btn) {
+    if (currentAppMode === 'firebase' && isFirebaseInitialized) {
+      fbAuth.signOut().then(() => {
+        resetFirebaseListeners();
+        state.currentUserProfile = null;
+        showToast("Logged out of Firebase.");
+        document.body.classList.add('show-login');
+        window.location.reload();
+      }).catch(err => {
+        showToast("Logout failed: " + err.message);
+      });
+    } else {
+      state.currentUserProfile = null;
+      showToast("Signed out of Demo.");
+      document.body.classList.add('show-login');
+      window.location.reload();
+    }
+  }
+});
+
+// Excel & CSV parsing helper function using SheetJS (xlsx)
+async function parseExcelOrCsv(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        if (rows.length === 0) {
+          resolve([]);
+          return;
+        }
+        
+        // Map headers dynamically (case-insensitive and whitespace tolerant)
+        const headers = rows[0].map(h => String(h || "").trim().toLowerCase());
+        const result = [];
+        
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || row.length === 0 || row.every(cell => cell === null || cell === undefined || String(cell).trim() === "")) {
+            continue; // Skip empty rows
+          }
+          const obj = {};
+          headers.forEach((h, colIdx) => {
+            let val = row[colIdx];
+            if (val === undefined || val === null) val = "";
+            else val = String(val).trim();
+            
+            let key = h;
+            if (h.includes("name")) key = "name";
+            else if (h.includes("email")) key = "email";
+            else if (h.includes("id") || h.includes("roll")) key = "id";
+            else if (h.includes("role")) key = "role";
+            else if (h.includes("taught")) key = "taughtcourses";
+            else if (h.includes("enrolled")) key = "enrolledcourses";
+            
+            obj[key] = val;
+          });
+          result.push(obj);
+        }
+        resolve(result);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// Download Excel File helper
+function downloadExcelFile(headers, rows, filename) {
+  const worksheetData = [headers, ...rows];
+  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+  XLSX.writeFile(workbook, filename);
+}
+
+// Download User Directory Template
+window.downloadUserTemplate = function(role) {
+  if (role === 'faculty') {
+    const headers = ["Name", "Email", "Employee ID", "Taught Courses (comma-separated)"];
+    const rows = [];
+    downloadExcelFile(headers, rows, "CG_Faculty_Roster_Template.xlsx");
+    showToast("Faculty roster template downloaded.");
+  } else {
+    const headers = ["Name", "Email", "Student ID", "Enrolled Courses (comma-separated)"];
+    const rows = [];
+    downloadExcelFile(headers, rows, "CG_Students_Roster_Template.xlsx");
+    showToast("Students roster template downloaded.");
+  }
+};
+
+// Download Course Roster Dynamic Template (Pre-populated with active course roster)
+window.downloadCourseRosterTemplate = function() {
+  const group = mockSlotGroups.find(g => g.id === editingMasterCourseData?.groupId);
+  const course = group ? group.courses.find(c => c.id === editingMasterCourseData?.courseId) : null;
+  const courseCode = course ? course.id : "Course";
+
+  const headers = ["Name", "Email", "Student ID"];
+  const rows = [];
+
+  if (course && course.students && course.students.length > 0) {
+    course.students.forEach(s => {
+      rows.push([s.name || "", s.email || "", s.id || ""]);
+    });
+    downloadExcelFile(headers, rows, `CG_${courseCode}_Roster.xlsx`);
+    showToast(`Downloaded active roster of ${rows.length} students for ${courseCode}.`);
+  } else {
+    // Return empty template with headers
+    downloadExcelFile(headers, rows, `CG_${courseCode}_Roster_Template.xlsx`);
+    showToast(`Downloaded template for ${courseCode}.`);
+  }
+};
+
+// ── Change Password Modal Functions ─────────────────────────────────────────
+window.openChangePasswordModal = function() {
+  const modal = document.getElementById("changePasswordModal");
+  if (modal) {
+    document.getElementById("changePasswordNew").value = "";
+    document.getElementById("changePasswordConfirm").value = "";
+    modal.classList.remove("hidden");
+  }
+};
+
+window.closeChangePasswordModal = function() {
+  const modal = document.getElementById("changePasswordModal");
+  if (modal) modal.classList.add("hidden");
+};
+
+window.submitChangePassword = async function() {
+  const newPass = document.getElementById("changePasswordNew")?.value;
+  const confPass = document.getElementById("changePasswordConfirm")?.value;
+
+  if (!newPass) {
+    showToast("Please enter a new password.");
+    return;
+  }
+  if (newPass.length < 6) {
+    showToast("Password must be at least 6 characters.");
+    return;
+  }
+  if (newPass !== confPass) {
+    showToast("Passwords do not match.");
+    return;
+  }
+
+  if (currentAppMode === 'firebase' && isFirebaseInitialized) {
+    const user = fbAuth.currentUser;
+    if (user) {
+      try {
+        await user.updatePassword(newPass);
+        showToast("Password updated successfully in Firebase.");
+        closeChangePasswordModal();
+      } catch (err) {
+        console.error("Failed to update password:", err);
+        showToast(`Failed to update password: ${err.message}`);
+      }
+    } else {
+      showToast("No logged in user found in Firebase.");
+    }
+  } else {
+    // Offline mode mock update
+    showToast("Offline Demo: Password updated successfully.");
+    closeChangePasswordModal();
+  }
+};

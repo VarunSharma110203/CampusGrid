@@ -22,6 +22,8 @@ const DEFAULT_PASSWORD = 'password123'; // Default password for new auth users
 const args = process.argv.slice(2);
 const isDryRun = args.includes('--dry-run');
 const seedFilePath = args.find(arg => arg.endsWith('.json')) || DEFAULT_SEED_FILE;
+const customerIdArg = args.find(arg => arg.startsWith('--customerId='));
+const customerId = customerIdArg ? customerIdArg.split('=')[1] : 'CUST-DEMO77';
 
 // Determine if we should run in live mode
 let admin;
@@ -84,7 +86,9 @@ async function run() {
   let skippedCount = 0;
 
   for (const user of users) {
-    const { email, name, role } = user;
+    const rawEmail = user.email;
+    const email = rawEmail ? rawEmail.trim().toLowerCase() : '';
+    const { name, role } = user;
     if (!email || !name || !role) {
       console.warn(`⚠️ Skipping invalid user record: ${JSON.stringify(user)}`);
       skippedCount++;
@@ -98,6 +102,8 @@ async function run() {
       email: email,
       name: name,
       role: role,
+      roles: [role],
+      customerId: customerId,
       updatedAt: new Date().toISOString()
     };
 
@@ -156,6 +162,23 @@ async function run() {
       console.log(`   [Simulate] db.collection("users").doc("${email}").set(${JSON.stringify(firestoreUserData)})`);
       successCount++;
     }
+  }
+
+  if (isLive) {
+    try {
+      const uniData = {
+        name: "University of Bharat",
+        shortName: "UNIVERSITY",
+        code: "CG",
+        customerId: customerId
+      };
+      await db.collection('customers').doc(customerId).collection('config').doc('university').set(uniData);
+      console.log(`\n🏫 Created tenant configuration for: ${uniData.name} (ID: ${customerId})`);
+    } catch (uniErr) {
+      console.error(`❌ Failed to write tenant config for customer ${customerId}:`, uniErr.message);
+    }
+  } else {
+    console.log(`\n🏫 [Simulate] db.collection("customers").doc("${customerId}").collection("config").doc("university").set(...)`);
   }
 
   console.log('\n================================================================');

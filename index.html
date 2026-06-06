@@ -8,62 +8,165 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   </head>
   <body class="role-admin show-login">
-    <section class="login-screen" id="loginScreen">
-      <div class="login-visual">
-        <div class="login-brand">
-          <div class="brand-mark">CG</div>
+    <!-- Marketing Landing Page -->
+    <section class="landing-page login-screen" id="loginScreen">
+      <!-- Navbar -->
+      <header class="landing-header">
+        <div class="landing-brand">
+          <div class="brand-mark" id="loginBrandMark">CG</div>
           <div>
-            <span>UNIVERSITY OF BHARAT</span>
-            <strong>Class & Hall operations</strong>
+            <strong id="loginUniName">UNIVERSITY OF BHARAT</strong>
+            <span>Class & Hall Operations</span>
           </div>
         </div>
-        <div class="login-copy">
-          <p class="eyebrow">Mission control for scheduling</p>
-          <h1>One grid.<br />Every room.<br />Every slot.</h1>
+        <nav class="landing-nav">
+          <a href="#features">Features</a>
+          <a href="#landingHero">Product</a>
+          <a href="#" onclick="startTour()">Product Tour</a>
+        </nav>
+        <div class="landing-actions">
+          <button class="btn sm" onclick="openLoginModal()" style="background: transparent; border: 1px solid var(--line-strong); color: var(--ink); font-weight: 600; padding: 6px 14px;">Sign In</button>
+          <button class="btn primary sm" onclick="openRegisterModal()" style="font-weight: 600; padding: 6px 14px;">Register University</button>
+        </div>
+      </header>
+
+      <!-- Hero Section -->
+      <section class="landing-hero" id="landingHero">
+        <div class="hero-content">
+          <span class="badge">v1.0 Release</span>
+          <h1>One grid.<br>Every room.<br>Every slot.</h1>
           <p>Replace sheets for 8 buildings, 200 teaching spaces, 15,000 students, and 500 faculty with live room visibility, request approvals, swaps, and daily operations.</p>
-        </div>
-        <span class="login-footnote">v1.0 · Indian Standard Time</span>
-      </div>
-      <div class="login-panel">
-        <div>
-          <p class="eyebrow">Sign in</p>
-          <h2>Welcome back</h2>
-          <p class="helper">Pick a role below to open the right workspace.</p>
-        </div>
-        <!-- Mode Selector -->
-        <div style="margin: 16px 0; background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
-          <span class="eyebrow" style="font-size: 9.5px; letter-spacing: 0.5px; color: var(--text-muted);">Application Mode</span>
-          <div class="segmented" style="display: flex; gap: 4px; width: 100%;">
-            <button type="button" class="active" id="modeOfflineBtn" style="flex: 1; padding: 6px; font-size: 11px; font-weight: 600;">Offline Demo</button>
-            <button type="button" id="modeFirebaseBtn" style="flex: 1; padding: 6px; font-size: 11px; font-weight: 600;">Firebase Live</button>
-          </div>
-          <div style="font-size: 10.5px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; margin-top: 2px;">
-            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #94a3b8;" id="firebaseIndicator"></span>
-            <span id="firebaseStatusText">Firebase not configured (offline fallback).</span>
+          <div class="hero-buttons">
+            <button class="btn primary lg" onclick="openRegisterModal()">Register Your University</button>
+            <button class="btn lg" onclick="openLoginModal()" style="background: white; border: 1px solid var(--line-strong);">Explore Demo Cockpit</button>
           </div>
         </div>
-        <div class="login-role-grid">
-          <button class="login-role active" data-login-role="admin"><span>Admin</span><strong>Timetabling cockpit</strong></button>
-          <button class="login-role" data-login-role="faculty"><span>Faculty</span><strong>Teaching & requests</strong></button>
-          <button class="login-role" data-login-role="facilities"><span>Facilities</span><strong>Issues & maintenance</strong></button>
-          <button class="login-role" data-login-role="student"><span>Student</span><strong>Today’s schedule</strong></button>
+        <div class="hero-visual">
+          <!-- Preview of the cockpit -->
+          <div class="visual-card">
+            <div class="visual-header">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="visual-title">CampusGrid Schedule Cockpit</span>
+            </div>
+            <div class="visual-body">
+              <div class="grid-mock">
+                <div class="grid-mock-row head"><span>Room</span><span>Slot 1</span><span>Slot 2</span><span>Slot 3</span></div>
+                <div class="grid-mock-row"><strong>A-101</strong><span class="booked">CS101 (Faculty)</span><span class="vacant">Vacant</span><span class="booked">ME201</span></div>
+                <div class="grid-mock-row"><strong>C-201</strong><span class="vacant">Vacant</span><span class="blocked">Exam Block</span><span class="vacant">Vacant</span></div>
+                <div class="grid-mock-row"><strong>D-LAB</strong><span class="booked">CS302 (Lab)</span><span class="booked">CS302 (Lab)</span><span class="vacant">Vacant</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <label class="field"><span>Email</span><input id="loginEmail" value="admin@univ.edu" /></label>
-        <label class="field"><span>Password</span><input type="password" id="loginPassword" value="admin123" /></label>
-        <button class="btn primary login-submit" id="loginSubmit">Sign in</button>
-        <p class="helper">Demo accounts auto-fill when you choose a role.</p>
-      </div>
+      </section>
+
+      <!-- Features Section -->
+      <section class="landing-features" id="features">
+        <div class="features-header">
+          <h2>Tailored Portals for Every Campus Persona</h2>
+          <p>Designed for administrators, teachers, maintenance personnel, and students.</p>
+        </div>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="icon">⚙️</div>
+            <h3>Administrators</h3>
+            <p>Schedule new course patterns, run bulk room blocks for exams, manage rosters, and approve swap requests instantly.</p>
+          </div>
+          <div class="feature-card">
+            <div class="icon">👨‍🏫</div>
+            <h3>Faculty</h3>
+            <p>View daily teaching calendars, flag classes as virtual, or cancel slots. Freed classrooms are automatically returned to the pool.</p>
+          </div>
+          <div class="feature-card">
+            <div class="icon">🔧</div>
+            <h3>Facilities</h3>
+            <p>Log maintenance issues, request classroom blockages for repairs, and track repair tasks on a live status kanban board.</p>
+          </div>
+          <div class="feature-card">
+            <div class="icon">🎓</div>
+            <h3>Students</h3>
+            <p>Access real-time personalized schedules showing room changes, exam blocks, or class delivery updates dynamically.</p>
+          </div>
+        </div>
+      </section>
     </section>
+
+    <!-- Sign In Modal -->
+    <div class="modal-backdrop hidden" id="loginModal">
+      <section class="modal" style="width: 440px; padding: 24px; max-height: 95vh; overflow-y: auto;">
+        <button class="modal-close" onclick="closeLoginModal()" aria-label="Close">x</button>
+        <!-- Sign In Panel -->
+        <div class="login-panel" id="signInPanel">
+          <div>
+            <p class="eyebrow">Sign in</p>
+            <h2 style="margin-top: 4px;">Welcome back</h2>
+            <p class="helper">Pick a role below to open the right workspace.</p>
+          </div>
+          <!-- Mode Selector -->
+          <div style="margin: 8px 0; background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+            <span class="eyebrow" style="font-size: 9.5px; letter-spacing: 0.5px; color: var(--text-muted);">Application Mode</span>
+            <div class="segmented" style="display: flex; gap: 4px; width: 100%;">
+              <button type="button" class="active" id="modeOfflineBtn" style="flex: 1; padding: 6px; font-size: 11px; font-weight: 600;">Offline Demo</button>
+              <button type="button" id="modeFirebaseBtn" style="flex: 1; padding: 6px; font-size: 11px; font-weight: 600;">Firebase Live</button>
+            </div>
+            <div style="font-size: 10.5px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+              <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #94a3b8;" id="firebaseIndicator"></span>
+              <span id="firebaseStatusText">Firebase not configured (offline fallback).</span>
+            </div>
+          </div>
+          <div class="login-role-grid">
+            <button class="login-role active" data-login-role="admin"><span>Admin</span><strong>Timetabling cockpit</strong></button>
+            <button class="login-role" data-login-role="faculty"><span>Faculty</span><strong>Teaching & requests</strong></button>
+            <button class="login-role" data-login-role="facilities"><span>Facilities</span><strong>Issues & maintenance</strong></button>
+            <button class="login-role" data-login-role="student"><span>Student</span><strong>Today’s schedule</strong></button>
+          </div>
+          <label class="field"><span>Email</span><input id="loginEmail" autocomplete="username" /></label>
+          <label class="field"><span>Password</span><input type="password" id="loginPassword" autocomplete="current-password" /></label>
+          <button class="btn primary login-submit" id="loginSubmit">Sign in</button>
+          <p class="helper" style="display:flex; justify-content:space-between; margin-top:10px; margin-bottom: 0;">
+            <span>Demo accounts auto-fill.</span>
+            <a href="#" onclick="openRegisterModal(); return false;" style="color: var(--primary); font-weight:600; text-decoration:none;">Register University</a>
+          </p>
+        </div>
+      </section>
+    </div>
+
+    <!-- Register University Modal -->
+    <div class="modal-backdrop hidden" id="registerModal">
+      <section class="modal" style="width: 480px; padding: 24px; max-height: 95vh; overflow-y: auto;">
+        <button class="modal-close" onclick="closeRegisterModal()" aria-label="Close">x</button>
+        <!-- Register University Panel -->
+        <div class="login-panel" id="registerPanel">
+          <div>
+            <p class="eyebrow">Setup Institution</p>
+            <h2 style="margin-top: 4px;">Register University</h2>
+            <p class="helper">Set up your portal branding and admin account.</p>
+          </div>
+          <label class="field"><span>University Full Name</span><input id="regUniName" placeholder="e.g. University of Delhi" /></label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <label class="field"><span>Sidebar Short Name</span><input id="regUniShort" placeholder="e.g. DELHI UNIV" /></label>
+            <label class="field"><span>Branding Code</span><input id="regUniCode" placeholder="e.g. UD" maxlength="3" /></label>
+          </div>
+          <label class="field"><span>Admin Email</span><input id="regAdminEmail" placeholder="admin@univ.edu" autocomplete="username" /></label>
+          <label class="field"><span>Admin Password</span><input type="password" id="regAdminPassword" autocomplete="new-password" /></label>
+          <button class="btn primary" id="registerSubmit">Create Portal &amp; Account</button>
+          <p class="helper" style="text-align: center; margin-top: 10px; margin-bottom: 0;">
+            <a href="#" onclick="openLoginModal(); return false;" style="color: var(--primary); font-weight:600; text-decoration:none;">&larr; Back to Sign In</a>
+          </p>
+        </div>
+      </section>
+    </div>
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-mark">
+          <div class="brand-mark" id="sidebarBrandMark">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path></svg>
           </div>
           <div>
-            <strong>UNIVERSITY</strong>
+            <strong id="sidebarUniName">UNIVERSITY</strong>
             <span>Scheduling</span>
           </div>
         </div>
@@ -171,43 +274,15 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;">
             <div class="dashboard-panel" style="background: white; border-radius: var(--radius); padding: 24px; border: 1px solid var(--line); box-shadow: var(--shadow);">
               <h3 style="font-size: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 12px;">Needs Attention</h3>
-              <div style="display: flex; flex-direction: column; gap: 12px;">
-                <div class="issue-card" style="border: 1px solid var(--blocked-border); background: var(--blocked-bg); padding: 12px; border-radius: var(--radius);">
-                  <div style="display: flex; justify-content: space-between;">
-                    <strong style="color: var(--blocked);">Room Conflict: C-201</strong>
-                    <span class="poi-status" style="background: var(--blocked); color: white;">Slot 2</span>
-                  </div>
-                  <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Double booked: CS101 and ME301</p>
-                  <button class="btn sm" style="margin-top: 8px; width: 100%;" onclick="showScreen('schedule')">Resolve</button>
-                </div>
-                <div class="issue-card" style="border: 1px solid var(--pending-border); background: var(--pending-bg); padding: 12px; border-radius: var(--radius);">
-                  <div style="display: flex; justify-content: space-between;">
-                    <strong style="color: var(--pending);">Faculty Request</strong>
-                  </div>
-                  <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Dr. Mehta requested a projector room swap.</p>
-                  <button class="btn sm" style="margin-top: 8px; width: 100%;" onclick="showScreen('requests')">Review</button>
-                </div>
+              <div id="dashboardNeedsAttentionContainer" style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Dynamically populated -->
               </div>
             </div>
 
             <div class="dashboard-panel" style="background: white; border-radius: var(--radius); padding: 24px; border: 1px solid var(--line); box-shadow: var(--shadow);">
               <h3 style="font-size: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 12px;">Recent Activity</h3>
-              <div class="activity-timeline" style="display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 16px; border-left: 2px solid var(--line);">
-                <div style="position: relative;">
-                  <div style="position: absolute; left: -21px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--vacant);"></div>
-                  <p style="font-size: 14px; font-weight: 500;">Master Matrix Published</p>
-                  <span style="font-size: 12px; color: var(--text-muted);">Admin • 10 mins ago</span>
-                </div>
-                <div style="position: relative;">
-                  <div style="position: absolute; left: -21px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--booked);"></div>
-                  <p style="font-size: 14px; font-weight: 500;">CS201 added to A-101</p>
-                  <span style="font-size: 12px; color: var(--text-muted);">Admin • 45 mins ago</span>
-                </div>
-                <div style="position: relative;">
-                  <div style="position: absolute; left: -21px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted);"></div>
-                  <p style="font-size: 14px; font-weight: 500;">Automated SIS Sync Completed</p>
-                  <span style="font-size: 12px; color: var(--text-muted);">System • 6:00 AM</span>
-                </div>
+              <div id="dashboardRecentActivityContainer" class="activity-timeline" style="display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 16px; border-left: 2px solid var(--line);">
+                <!-- Dynamically populated -->
               </div>
             </div>
           </div>
@@ -441,11 +516,7 @@
 
         <section id="faculty" class="screen hidden">
           <div class="role-home">
-            <div class="alert-strip">
-              <button class="alert-pill">2 classes today</button>
-              <button class="alert-pill warning" id="facultyRequestSummary">1 request awaiting admin</button>
-              <button class="alert-pill">Next: CS101 at 10 AM</button>
-            </div>
+            <div class="alert-strip" id="facultyAlertStrip"></div>
             <div class="section-header">
               <div><p class="eyebrow">Faculty Home</p><h2>My teaching schedule</h2></div>
               <div class="cta-row" style="margin-top:0;">
@@ -459,11 +530,7 @@
         </section>
 
         <section id="facilities" class="screen hidden">
-          <div class="alert-strip">
-            <button class="alert-pill danger">2 urgent issues</button>
-            <button class="alert-pill warning">1 block awaiting admin</button>
-            <button class="alert-pill">14 rooms checked today</button>
-          </div>
+          <div class="alert-strip" id="facilitiesAlertStrip"></div>
           <div class="section-header">
             <div><p class="eyebrow">Facilities Manager</p><h2>Today’s operational schedule</h2></div>
             <div class="cta-row" style="margin-top:0;">
@@ -473,14 +540,10 @@
           </div>
           <div class="two-col">
             <div class="ops-list">
-              <article><strong>D-LAB-2</strong><span>Slots 1-2: PHY Lab - Optics</span><em class="tag requested">Issue reported</em></article>
-              <article><strong>C-201</strong><span>Slot 2: CS101 Data Structures</span><em class="tag approved">Operational</em></article>
-              <article><strong>F-AUD-01</strong><span>Slot 5: Guest Talk</span><em class="tag blocked">Mic repair</em></article>
+              <!-- Dynamically populated -->
             </div>
             <div class="table-card" id="facilitiesInboxList">
-              <div class="table-row head"><span>Inbox</span><span>Status</span><span>Downtime</span></div>
-              <div class="table-row"><span>D-LAB-2 optics bench</span><span class="tag requested">Requested</span><span>9-11</span></div>
-              <div class="table-row"><span>C-201 projector flicker</span><span class="tag approved">Approved</span><span>After 4 PM</span></div>
+              <!-- Dynamically populated -->
             </div>
           </div>
         </section>
@@ -563,14 +626,7 @@
                     <h2 style="font-size: 16px;">Campus Notices</h2>
                   </div>
                 </div>
-                <div class="student-notice warning" style="margin-bottom: 12px; padding: 12px; border-radius: 6px; background: var(--pending-bg); border: 1px solid var(--pending-border);">
-                  <strong style="display: block; color: var(--pending); font-size: 14px; margin-bottom: 4px;">CS101 has moved virtual today</strong>
-                  <span style="font-size: 12px; color: var(--text-muted);">Updated by Dr. Ananya Mehta. Room C-201 released.</span>
-                </div>
-                <div class="student-notice" style="padding: 12px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line);">
-                  <strong style="display: block; font-size: 14px; margin-bottom: 4px;">Programming Lab moved to D-LAB-5</strong>
-                  <span style="font-size: 12px; color: var(--text-muted);">Slot 4 today. Lab Block only.</span>
-                </div>
+                <div id="studentNoticesList" style="display: flex; flex-direction: column; gap: 12px;"></div>
               </section>
               
               <section class="student-card" style="background: white; border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow);">
@@ -650,10 +706,13 @@
 
         <!-- ═══════════════ SETTINGS & INFRASTRUCTURE ═══════════════ -->
         <section id="settings" class="screen hidden">
-          <div class="section-header">
+          <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
             <div>
               <p class="eyebrow">Admin Configuration</p>
               <h2>Campus Infrastructure Setup</h2>
+            </div>
+            <div id="settingsCustomerIdBadge" style="background: #ede9fe; color: #6366f1; border: 1px solid #ddd6fe; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; font-family: monospace; display: none;">
+              Customer ID: Loading...
             </div>
           </div>
 
@@ -664,6 +723,7 @@
             <button class="settings-tab" data-tab="infrarooms">Rooms &amp; Slot Assignments</button>
             <button class="settings-tab" data-tab="calendar">Academic Calendar</button>
             <button class="settings-tab" data-tab="firebase">Firebase Production</button>
+            <button class="settings-tab" data-tab="users">User Directory</button>
           </div>
 
           <!-- Tab: Global Slot Config -->
@@ -726,17 +786,79 @@
               </div>
             </div>
           </div>
+
+          <!-- Tab: User Directory Manager -->
+          <div class="settings-panel hidden" id="settingsPanel-users">
+            <div class="settings-panel-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <p>Manage the student, faculty, facilities, and admin database. Add users manually or bulk upload rosters.</p>
+              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <button class="btn sm" onclick="downloadUserTemplate('faculty')" style="background: white; border: 1px solid var(--line-strong); display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 12px; margin: 0; line-height: 1.5;">📥 Faculty Template</button>
+                <label class="btn sm" style="background: white; border: 1px solid var(--line-strong); display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 12px; margin: 0; line-height: 1.5;">
+                  📁 Upload Faculty (Excel/CSV)
+                  <input type="file" id="facultyBulkUploadInput" accept=".xlsx, .xls, .csv" style="display: none;" />
+                </label>
+                <button class="btn sm" onclick="downloadUserTemplate('student')" style="background: white; border: 1px solid var(--line-strong); display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 12px; margin: 0; line-height: 1.5;">📥 Students Template</button>
+                <label class="btn sm" style="background: white; border: 1px solid var(--line-strong); display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 12px; margin: 0; line-height: 1.5;">
+                  📁 Upload Students (Excel/CSV)
+                  <input type="file" id="studentBulkUploadInput" accept=".xlsx, .xls, .csv" style="display: none;" />
+                </label>
+                <button class="btn primary sm" onclick="openAddUserModal()">+ Add User</button>
+              </div>
+            </div>
+            
+            <!-- User Filter & Search Bar -->
+            <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+              <div class="field" style="margin:0; flex:1;">
+                <input type="text" id="userDirectorySearch" placeholder="Search by name or email..." style="padding: 8px 12px; font-size: 13px;" />
+              </div>
+              <div class="field" style="margin:0; width:150px;">
+                <select id="userDirectoryRoleFilter" style="padding: 8px; font-size: 13px;">
+                  <option value="all">All Roles</option>
+                  <option value="admin">Admin</option>
+                  <option value="faculty">Faculty</option>
+                  <option value="facilities">Facilities</option>
+                  <option value="student">Student</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Users List Table -->
+            <div class="table-card" style="max-height: 400px; overflow-y: auto;">
+              <div class="table-row head" style="grid-template-columns: 2fr 1.5fr 1fr 80px;">
+                <span>User Name</span>
+                <span>Email Address</span>
+                <span>Role</span>
+                <span style="text-align: right;">Action</span>
+              </div>
+              <div id="userDirectoryListContainer">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- Screen: Calendar -->
         <section id="calendar" class="screen hidden">
           <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
-            <h2 style="font-size: 20px; font-weight: 700; color: var(--ink);">May 2026</h2>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button id="calPrevMonthBtn" class="btn sm" style="background:white; padding: 6px 12px;">&#8592;</button>
+              <h2 id="calendarMonthLabel" style="font-size: 20px; font-weight: 700; color: var(--ink); min-width: 160px; text-align: center;">May 2026</h2>
+              <button id="calNextMonthBtn" class="btn sm" style="background:white; padding: 6px 12px;">&#8594;</button>
+            </div>
             <div style="display: flex; gap: 16px; font-size: 13px;">
               <span style="display: flex; align-items: center; gap: 6px;"><div style="width:12px; height:12px; border-radius:3px; background:var(--primary);"></div> Active Day</span>
               <span style="display: flex; align-items: center; gap: 6px;"><div style="width:12px; height:12px; border-radius:3px; background:var(--danger);"></div> Holiday</span>
               <span style="display: flex; align-items: center; gap: 6px;"><div style="width:12px; height:12px; border-radius:3px; background:var(--warning);"></div> Exam Period</span>
             </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:12px;margin-bottom:8px;">
+            <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Mon</div>
+            <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Tue</div>
+            <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Wed</div>
+            <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Thu</div>
+            <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Fri</div>
+            <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Sat</div>
+            <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Sun</div>
           </div>
           <div class="calendar-grid" id="universityCalendarGrid">
             <!-- Populated by JS -->
@@ -784,51 +906,63 @@
               <input type="text" id="builderCourseName" placeholder="e.g. Advanced Data Structures" />
             </label>
           </div>
-          <div style="display: flex; gap: 16px; margin-bottom: 24px;">
-            <label class="field" style="flex: 1;">
-              <span>Faculty Name</span>
-              <input type="text" id="builderFacultyName" placeholder="e.g. Dr. Ananya Mehta" />
-            </label>
+          <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+            <div class="field" style="flex: 1.5; position: relative; display: flex; flex-direction: column;">
+              <span style="font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted);">Assign Faculty</span>
+              <input type="text" id="builderFacultySearch" placeholder="Search by name, email, or ID..." oninput="filterFacultyDropdown()" onfocus="showFacultyDropdown()" autocomplete="off" style="width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); font-size: 13px; font-family: inherit; box-sizing: border-box;" />
+              <input type="hidden" id="builderFacultyName" />
+              <input type="hidden" id="builderFacultyEmail" />
+              <div id="facultyDropdown" class="hidden" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--line-strong); border-radius: 6px; box-shadow: var(--shadow-md); z-index: 1000; max-height: 180px; overflow-y: auto; margin-top: 4px;">
+                <!-- Populated dynamically with faculty profiles -->
+              </div>
+            </div>
             <label class="field" style="flex: 1;">
               <span>Cohort / Audience</span>
               <input type="text" id="builderCohort" placeholder="e.g. B.Tech CS Year 2" />
             </label>
+          </div>
+          <div style="display: flex; gap: 16px; margin-bottom: 24px;">
             <label class="field" style="flex: 1;">
               <span>Effective Start Date</span>
               <input type="date" id="builderEffectiveDate" />
+            </label>
+            <label class="field" style="flex: 1;">
+              <span>Effective End Date <span style="font-size:10px;color:var(--text-muted);font-weight:400;">(optional — leave blank = term end)</span></span>
+              <input type="date" id="builderEffectiveEndDate" />
             </label>
           </div>
 
           <hr style="border: none; border-top: 1px solid var(--line); margin: 24px 0;" />
           
           <!-- Interactive Toggles -->
-          <h3 style="font-size: 14px; margin-bottom: 12px; font-weight: 600;">1. Select Slot of the Day</h3>
+          <h3 style="font-size: 14px; margin-bottom: 12px; font-weight: 600;">1. Select Time Slot</h3>
           <div class="builder-toggles" id="slotToggles" style="margin-bottom: 24px;">
-            <button class="builder-toggle" data-val="A">Slot 1 (A)</button>
-            <button class="builder-toggle" data-val="B">Slot 2 (B)</button>
-            <button class="builder-toggle" data-val="C">Slot 3 (C)</button>
-            <button class="builder-toggle" data-val="D">Slot 4 (D)</button>
-            <button class="builder-toggle" data-val="E">Slot 5 (E)</button>
-            <button class="builder-toggle" data-val="F">Slot 6 (F)</button>
+            <!-- Populated dynamically from slotTimes by openPatternBuilderModal() / editMasterCourse() -->
           </div>
 
           <h3 style="font-size: 14px; margin-bottom: 12px; font-weight: 600;">2. Select Days of the Week</h3>
           <div class="builder-toggles" id="dayToggles" style="margin-bottom: 24px;">
-            <button class="builder-toggle" data-val="11">Monday</button>
-            <button class="builder-toggle" data-val="12">Tuesday</button>
-            <button class="builder-toggle" data-val="13">Wednesday</button>
-            <button class="builder-toggle" data-val="14">Thursday</button>
-            <button class="builder-toggle" data-val="15">Friday</button>
+            <button class="builder-toggle" data-val="1">Mon</button>
+            <button class="builder-toggle" data-val="2">Tue</button>
+            <button class="builder-toggle" data-val="3">Wed</button>
+            <button class="builder-toggle" data-val="4">Thu</button>
+            <button class="builder-toggle" data-val="5">Fri</button>
+            <button class="builder-toggle" data-val="6">Sat</button>
+            <button class="builder-toggle" data-val="0">Sun</button>
           </div>
 
           <!-- Live Preview -->
           <div style="background: #f8fafc; border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 13px; font-weight: 600;">Generated Pattern:</span>
-              <span id="builderLivePreview" style="font-size: 14px; font-weight: 700; color: var(--primary); background: #eff6ff; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--primary);">Select options above</span>
+              <span style="font-size: 13px; font-weight: 600;">Schedule Preview:</span>
+              <span id="builderLivePreview" style="font-size: 13px; font-weight: 600; color: var(--primary); background: #eff6ff; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--primary);">Select options above</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 13px; font-weight: 600;">Generated Course ID:</span>
+              <span style="font-size: 13px; font-weight: 600;">Slot Code:</span>
+              <span id="builderSlotCodePreview" style="font-size: 13px; font-weight: 700; color: #16a34a; font-family: monospace; background: #f0fdf4; padding: 3px 10px; border-radius: 6px; border: 1px solid #bbf7d0;">—</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 13px; font-weight: 600;">Course ID:</span>
               <span id="builderCourseIdPreview" style="font-size: 14px; font-weight: 700; color: var(--ink); font-family: monospace;">Awaiting inputs...</span>
             </div>
           </div>
@@ -848,11 +982,103 @@
             <input type="checkbox" id="builderAccessibilityRequired" style="width:auto; margin:0;" />
             <span style="font-size: 13px;">♿ Requires Accessible Classroom (Mobility Needs)</span>
           </label>
+
+          <!-- Course Student Roster Upload -->
+          <h3 style="font-size: 14px; margin-top: 20px; margin-bottom: 12px; font-weight: 600;">4. Course Student Roster</h3>
+          <div style="background: #f8fafc; border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 13px; font-weight: 600;">Enrolled Student Count:</span>
+              <span id="builderEnrolledCount" style="font-size: 14px; font-weight: 700; color: var(--primary);">0 students</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <label class="btn sm" style="background: white; border: 1px solid var(--line-strong); display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 12px; margin: 0; line-height: 1.5; width: fit-content;">
+                📁 Upload Student Roster (Excel/CSV)
+                <input type="file" id="courseStudentsUploadInput" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleCourseStudentsUpload(event)" />
+              </label>
+              <button type="button" class="btn sm" onclick="downloadCourseRosterTemplate()" style="background: white; border: 1px solid var(--line-strong); display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 12px; margin: 0; line-height: 1.5;">
+                📥 Download Template
+              </button>
+            </div>
+            <div id="courseStudentsListPreview" style="font-size: 12px; color: var(--text-muted); max-height: 100px; overflow-y: auto;">
+              No students uploaded for this course yet.
+            </div>
+          </div>
         </div>
 
         <div style="padding: 16px 24px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px;">
           <button class="btn" onclick="closePatternBuilderModal()">Cancel</button>
           <button class="btn primary" onclick="submitNewCourse()">Add to Master Schedule</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Add User Modal -->
+    <div class="modal-backdrop hidden" id="addUserModal">
+      <section class="modal" style="width: 480px;">
+        <button class="modal-close" onclick="closeAddUserModal()" aria-label="Close">x</button>
+        <div class="modal-header">
+          <p class="eyebrow">User Management</p>
+          <h2>Add New User</h2>
+        </div>
+        <div style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+          <label class="field">
+            <span>Full Name</span>
+            <input type="text" id="addUserName" placeholder="e.g. Prof. Jane Doe" />
+          </label>
+          <label class="field">
+            <span>Email Address</span>
+            <input type="email" id="addUserEmail" placeholder="e.g. jane.doe@univ.edu" />
+          </label>
+          <div class="field">
+            <span style="font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; display: block;">Roles (Select all that apply)</span>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; font-weight: normal; color: var(--ink);">
+                <input type="checkbox" name="addUserRoles" value="student" checked style="width: auto; margin: 0;" /> Student
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; font-weight: normal; color: var(--ink);">
+                <input type="checkbox" name="addUserRoles" value="faculty" style="width: auto; margin: 0;" /> Faculty (Professor)
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; font-weight: normal; color: var(--ink);">
+                <input type="checkbox" name="addUserRoles" value="facilities" style="width: auto; margin: 0;" /> Facilities Manager
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; font-weight: normal; color: var(--ink);">
+                <input type="checkbox" name="addUserRoles" value="admin" style="width: auto; margin: 0;" /> Administrator (Owner/Master)
+              </label>
+            </div>
+          </div>
+          <label class="field">
+            <span>Password (for Firebase live mode)</span>
+            <input type="password" id="addUserPassword" placeholder="Minimum 6 characters" value="password123" />
+          </label>
+        </div>
+        <div style="padding: 16px 24px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn" onclick="closeAddUserModal()">Cancel</button>
+          <button class="btn primary" id="submitAddUserBtn">Create User</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal-backdrop hidden" id="changePasswordModal">
+      <section class="modal" style="width: 400px;">
+        <button class="modal-close" onclick="closeChangePasswordModal()" aria-label="Close">x</button>
+        <div class="modal-header">
+          <p class="eyebrow">Security</p>
+          <h2>Change Password</h2>
+        </div>
+        <div style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+          <label class="field">
+            <span>New Password</span>
+            <input type="password" id="changePasswordNew" placeholder="Enter new password" />
+          </label>
+          <label class="field">
+            <span>Confirm Password</span>
+            <input type="password" id="changePasswordConfirm" placeholder="Confirm new password" />
+          </label>
+        </div>
+        <div style="padding: 16px 24px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="btn" onclick="closeChangePasswordModal()">Cancel</button>
+          <button class="btn primary" onclick="submitChangePassword()">Update Password</button>
         </div>
       </section>
     </div>
