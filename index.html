@@ -18,7 +18,7 @@
         <div class="landing-brand">
           <div class="brand-mark" id="loginBrandMark">CG</div>
           <div>
-            <strong id="loginUniName">CAMPUSGRID</strong>
+            <strong>CAMPUSGRID</strong>
             <span>Operational Timetabling Cockpit</span>
           </div>
         </div>
@@ -114,8 +114,8 @@
             <span>Clash Resolution</span>
           </div>
           <div class="stat-item">
-            <strong>15k+</strong>
-            <span>Active Profiles</span>
+            <strong>Real-Time</strong>
+            <span>Conflict Detection</span>
           </div>
           <div class="stat-item">
             <strong>100%</strong>
@@ -124,34 +124,162 @@
         </div>
       </section>
 
-      <!-- Portals & Features Section -->
-      <section class="landing-features" id="features">
-        <div class="features-header">
-          <h2>Campus Portals Designed for Operators</h2>
-          <p>Four interconnected spaces working in perfect sync to eliminate scheduling friction.</p>
+      <!-- Portals & Long-Scroll Showcase Section -->
+      <section class="landing-showcase" id="features">
+        
+        <!-- Section 1: Admin Cockpit -->
+        <div class="showcase-section">
+          <div class="showcase-text">
+            <span class="showcase-eyebrow admin">Admin Cockpit</span>
+            <h2 class="showcase-title">Orchestrate Your Campus.<br>In Real Time.</h2>
+            <p class="showcase-desc">CampusGrid gives administrators a unified scheduling matrix. Track every classroom booking, detect capacity conflicts instantly, and coordinate moves seamlessly from one central grid.</p>
+            <ul class="showcase-bullets">
+              <li class="showcase-bullet-item admin"><i>✓</i> <span><strong>Live Timetabling Matrix</strong>: Monitor lecture slots across 8 buildings in real time.</span></li>
+              <li class="showcase-bullet-item admin"><i>✓</i> <span><strong>Conflict Guard</strong>: Prevent duplicate assignments and room capacity overrides automatically.</span></li>
+              <li class="showcase-bullet-item admin"><i>✓</i> <span><strong>Displaced Queue</strong>: Send clashed classes to a temporary holding block for easy reassignment.</span></li>
+            </ul>
+          </div>
+          <div class="showcase-visual">
+            <div class="preview-simulator glow-admin" style="max-width: 480px; width: 100%;">
+              <div class="simulator-header">
+                <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                <div class="url-bar">campusgrid.edu/admin</div>
+                <div style="width: 38px;"></div>
+              </div>
+              <div class="simulator-body" style="min-height: 200px;">
+                <div class="mock-alert-bar" id="scrollAdminAlertBar" style="display: none;"></div>
+                <div class="mock-grid" id="scrollAdminGrid"></div>
+                <div id="scrollAdminDetailCard" style="display: none;"></div>
+                <div class="sim-unassigned-box" id="scrollAdminUnassignedBox" style="display: none; margin-top: 12px;">
+                  <div class="sim-unassigned-title">Displaced Queue (Click to Reassign)</div>
+                  <div class="sim-unassigned-list" id="scrollAdminUnassignedList"></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="features-grid">
-          <div class="feature-card" data-accent="admin">
-            <div class="icon">⚙️</div>
-            <h3>Admin Cockpit</h3>
-            <p>Coordinate rooms, resolve overlaps, block areas for exams, and manage multi-tenant user directories from one live matrix.</p>
+
+        <!-- Section 2: Faculty Console -->
+        <div class="showcase-section reverse">
+          <div class="showcase-text">
+            <span class="showcase-eyebrow faculty">Faculty Console</span>
+            <h2 class="showcase-title">Mode Shifts.<br>Zero Friction.</h2>
+            <p class="showcase-desc">Empower faculty to manage class deliveries on the go. Switch lectures to virtual format or cancel slots instantly. Releasing a room automatically updates the admin grid, freeing physical space immediately.</p>
+            <ul class="showcase-bullets">
+              <li class="showcase-bullet-item faculty"><i>✓</i> <span><strong>Instant Room Release</strong>: Release rooms back to the vacant pool the second a class goes virtual.</span></li>
+              <li class="showcase-bullet-item faculty"><i>✓</i> <span><strong>Teaching Timelines</strong>: Faculty view personalized schedules synced with live room switches.</span></li>
+              <li class="showcase-bullet-item faculty"><i>✓</i> <span><strong>Request Approvals</strong>: Submit event blocks or room requests directly to the admin queue.</span></li>
+            </ul>
           </div>
-          <div class="feature-card" data-accent="faculty">
-            <div class="icon">👨‍🏫</div>
-            <h3>Faculty Portal</h3>
-            <p>Access daily teaching calendars, swap slots with colleagues, flag lectures as virtual, or log immediate classroom maintenance tickets.</p>
-          </div>
-          <div class="feature-card" data-accent="facilities">
-            <div class="icon">🔧</div>
-            <h3>Facilities Hub</h3>
-            <p>Receive maintenance requests instantly, block damaged classrooms dynamically, and update repair statuses on a live Kanban board.</p>
-          </div>
-          <div class="feature-card" data-accent="student">
-            <div class="icon">🎓</div>
-            <h3>Student Dashboard</h3>
-            <p>Access live daily timelines showing precise locations, instructor details, virtual lecture link redirects, and sudden room changes.</p>
+          <div class="showcase-visual">
+            <div class="preview-simulator glow-faculty" style="max-width: 480px; width: 100%;">
+              <div class="simulator-header">
+                <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                <div class="url-bar">campusgrid.edu/faculty</div>
+                <div style="width: 38px;"></div>
+              </div>
+              <div class="simulator-body" style="min-height: 160px;">
+                <div class="mock-faculty-list" id="scrollFacultyList"></div>
+              </div>
+            </div>
           </div>
         </div>
+
+        <!-- Section 3: Facilities Hub -->
+        <div class="showcase-section">
+          <div class="showcase-text">
+            <span class="showcase-eyebrow facilities">Facilities Hub</span>
+            <h2 class="showcase-title">Minimize Room<br>Downtime.</h2>
+            <p class="showcase-desc">Coordinate campus maintenance without disrupting academics. Log issues instantly, validate repair urgency, and request slot blocks that automatically displace and warn scheduled classes.</p>
+            <ul class="showcase-bullets">
+              <li class="showcase-bullet-item facilities"><i>✓</i> <span><strong>Kanban Repair Board</strong>: Manage logged breakdowns from review to resolution.</span></li>
+              <li class="showcase-bullet-item facilities"><i>✓</i> <span><strong>Automated Block Request</strong>: Displace courses in real-time when maintenance downtime is approved.</span></li>
+              <li class="showcase-bullet-item facilities"><i>✓</i> <span><strong>Operational Transparency</strong>: Ensure faculty and student views update instantly during repairs.</span></li>
+            </ul>
+          </div>
+          <div class="showcase-visual">
+            <div class="preview-simulator glow-facilities" style="max-width: 480px; width: 100%;">
+              <div class="simulator-header">
+                <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                <div class="url-bar">campusgrid.edu/facilities</div>
+                <div style="width: 38px;"></div>
+              </div>
+              <div class="simulator-body" style="min-height: 160px;">
+                <div class="mock-kanban" id="scrollFacilitiesKanban"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4: Student Timeline -->
+        <div class="showcase-section reverse">
+          <div class="showcase-text">
+            <span class="showcase-eyebrow student">Student Timeline</span>
+            <h2 class="showcase-title">Personalized Feeds.<br>Instantly Synced.</h2>
+            <p class="showcase-desc">Keep your student community informed of sudden changes. Students receive a personalized daily timeline showing precise classroom locations, virtual flags, and live notification warnings.</p>
+            <ul class="showcase-bullets">
+              <li class="showcase-bullet-item student"><i>✓</i> <span><strong>Real-Time Schedule Feed</strong>: Display today's slots with instant room numbers and faculty details.</span></li>
+              <li class="showcase-bullet-item student"><i>✓</i> <span><strong>Dynamic Notices</strong>: Receive alerts immediately when an admin moves or blocks a class.</span></li>
+              <li class="showcase-bullet-item student"><i>✓</i> <span><strong>Virtual Indicators</strong>: Spot virtual classes at a glance with one-click links.</span></li>
+            </ul>
+          </div>
+          <div class="showcase-visual">
+            <div class="preview-simulator glow-student" style="max-width: 480px; width: 100%;">
+              <div class="simulator-header">
+                <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                <div class="url-bar">campusgrid.edu/student</div>
+                <div style="width: 38px;"></div>
+              </div>
+              <div class="simulator-body" style="min-height: 200px;">
+                <div class="mock-timeline" style="margin-bottom: 12px;" id="scrollStudentTimeline"></div>
+                <div class="sim-unassigned-box" id="scrollStudentNoticesBox">
+                  <div class="sim-unassigned-title">Campus Notifications</div>
+                  <div class="mock-faculty-list" id="scrollStudentNoticesList" style="gap: 6px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 5: Bulk Exams Scheduling -->
+        <div class="showcase-section">
+          <div class="showcase-text">
+            <span class="showcase-eyebrow bulk">Exams & Bulk Actions</span>
+            <h2 class="showcase-title">Suspend and Restore.<br>In One Click.</h2>
+            <p class="showcase-desc">Run bulk operational blocks across date ranges, rooms, and slot profiles. The engine automatically suspends standard courses for the exam period, mapping exam seatings cleanly, and restores courses in one click once the period ends.</p>
+            <ul class="showcase-bullets">
+              <li class="showcase-bullet-item bulk"><i>✓</i> <span><strong>Date-Range Blocking</strong>: Block rooms globally during midterms or end-semester seatings.</span></li>
+              <li class="showcase-bullet-item bulk"><i>✓</i> <span><strong>Impact Previews</strong>: Check how many courses are displaced before applying any exam block.</span></li>
+              <li class="showcase-bullet-item bulk"><i>✓</i> <span><strong>Automatic Re-seeding</strong>: Restore standard classes automatically when ending the exam block.</span></li>
+            </ul>
+          </div>
+          <div class="showcase-visual">
+            <div class="preview-simulator" id="scrollBulkSimulator" style="max-width: 480px; width: 100%; border-color: rgba(244, 63, 94, 0.2); box-shadow: 0 30px 60px rgba(0,0,0,0.5), 0 0 30px rgba(244, 63, 94, 0.05);">
+              <div class="simulator-header">
+                <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                <div class="url-bar">campusgrid.edu/exams</div>
+                <div style="width: 38px;"></div>
+              </div>
+              <div class="simulator-body" style="min-height: 180px; gap: 10px;">
+                <div style="font-size: 11px; color: var(--cg-light-gray); display:flex; flex-direction:column; gap:8px;">
+                  <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--cg-border); padding-bottom:6px;">
+                    <strong>Block Dates</strong>
+                    <span style="color:#f43f5e; font-weight:700;">Active Matrix</span>
+                  </div>
+                  <div><strong>From</strong> <span>08/06/2026</span> &nbsp; <strong>To</strong> <span>12/06/2026</span></div>
+                  <div><strong>Affected Rooms</strong> <span style="color:#fff;">A-101, C-201</span></div>
+                  <div id="simBulkNotice" style="background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.15); border-radius: 6px; padding: 6px 10px; color:#fb7185; font-weight:600; text-align:center;">
+                    Standard courses suspended. Exam block active.
+                  </div>
+                  <button id="simBulkToggleBtn" style="background:#ffffff; color:#000000; border:none; padding:8px; border-radius:6px; font-weight:700; cursor:pointer; font-family:inherit; font-size:11px; margin-top:4px; transition: all 0.2s ease;">
+                    End Exam Period &amp; Restore
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </section>
 
       <!-- Premium Cinematic Footer -->

@@ -6421,8 +6421,7 @@ async function checkUniversityRegistration() {
 
 function applyDynamicBranding(uniData) {
   if (!uniData) return;
-  const loginUniName = document.getElementById("loginUniName");
-  if (loginUniName) loginUniName.innerText = (uniData.name || "University of Bharat").toUpperCase();
+  // Landing page header always shows the product brand name (CAMPUSGRID), not the customer university name.
 
   const sidebarUniName = document.getElementById("sidebarUniName");
   if (sidebarUniName) sidebarUniName.innerText = (uniData.shortName || "UNIVERSITY").toUpperCase();
