@@ -54,25 +54,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ─── Login Screen ─────────────────────────────────────────── */
-.login-screen {
-  position: fixed;
-  inset: 0;
-  display: none;
-  z-index: 500;
-  background: white;
-}
-
-/* Show login when body has .show-login */
-body.show-login .login-screen {
+/* ─── Landing Page Toggle ─────────────────────────────────────────── */
+/* Show landing page when body has .show-login */
+body.show-login .landing-page {
   display: flex;
-  overflow-y: auto;
 }
 
-/* Hide app when login is shown */
+/* Hide app when landing page is shown */
 body.show-login .app-shell {
-  visibility: hidden;
-  pointer-events: none;
+  display: none !important;
 }
 
 .login-visual {
@@ -2343,7 +2333,7 @@ body.show-login .app-shell {
   .bell-container,
   #printBtn,
   .btn,
-  .login-screen {
+  .landing-page {
     display: none !important;
   }
   
@@ -2986,24 +2976,64 @@ body.show-login .app-shell {
   font-family: monospace;
 }
 
-/* Features Grid Overhaul */
-.landing-features {
-  padding: 120px 80px;
+/* ═══════════════ LONG-SCROLL FEATURE SHOWCASE ═══════════════ */
+.landing-showcase {
   background-color: var(--cg-black);
+  padding: 40px 0;
 }
 
-.features-header {
-  text-align: center;
-  max-width: 700px;
-  margin: 0 auto 80px;
+.showcase-section {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 80px;
+  padding: 100px 80px;
+  max-width: 1400px;
+  margin: 0 auto;
+  align-items: center;
+  border-bottom: 1px solid var(--cg-border);
+}
+
+.showcase-section:last-of-type {
+  border-bottom: none;
+}
+
+.showcase-section.reverse {
+  grid-template-columns: 1.1fr 1fr;
+}
+
+.showcase-section.reverse .showcase-text {
+  order: 2;
+}
+
+.showcase-section.reverse .showcase-visual {
+  order: 1;
+}
+
+.showcase-text {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.features-header h2 {
-  font-size: 44px;
+.showcase-eyebrow {
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0;
+}
+
+.showcase-eyebrow.admin { color: var(--cg-accent-admin); }
+.showcase-eyebrow.faculty { color: var(--cg-accent-faculty); }
+.showcase-eyebrow.facilities { color: var(--cg-accent-facilities); }
+.showcase-eyebrow.student { color: var(--cg-accent-student); }
+.showcase-eyebrow.bulk { color: #f43f5e; }
+
+.showcase-title {
+  font-size: 48px;
   font-weight: 800;
+  line-height: 1.1;
   color: var(--cg-white);
   letter-spacing: -1.5px;
   margin: 0;
@@ -3012,98 +3042,50 @@ body.show-login .app-shell {
   -webkit-text-fill-color: transparent;
 }
 
-.features-header p {
-  font-size: 17px;
+.showcase-desc {
+  font-size: 16px;
   color: var(--cg-light-gray);
-  line-height: 1.6;
+  line-height: 1.7;
+  margin: 0 0 8px 0;
+}
+
+.showcase-bullets {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  list-style: none;
+  padding: 0;
   margin: 0;
 }
 
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 32px;
-  max-width: 1280px;
-  margin: 0 auto;
-}
-
-/* CRED outline card border-gradient glows */
-.feature-card {
-  padding: 48px 36px;
-  border: 1px solid var(--cg-border);
-  border-radius: 16px;
-  background: var(--cg-charcoal);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.feature-card::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  border-radius: 16px;
-  padding: 1.5px;
-  background: transparent;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  transition: background 0.4s ease;
-}
-
-/* Card Accent Colors */
-.feature-card[data-accent="admin"]::before { background: linear-gradient(135deg, rgba(139, 92, 246, 0), rgba(139, 92, 246, 0)); }
-.feature-card[data-accent="faculty"]::before { background: linear-gradient(135deg, rgba(6, 182, 212, 0), rgba(6, 182, 212, 0)); }
-.feature-card[data-accent="facilities"]::before { background: linear-gradient(135deg, rgba(245, 158, 11, 0), rgba(245, 158, 11, 0)); }
-.feature-card[data-accent="student"]::before { background: linear-gradient(135deg, rgba(236, 72, 153, 0), rgba(236, 72, 153, 0)); }
-
-.feature-card:hover {
-  transform: translateY(-8px);
-  background: rgba(17, 17, 22, 0.85);
-}
-
-.feature-card[data-accent="admin"]:hover {
-  box-shadow: 0 24px 48px rgba(0,0,0,0.5), 0 0 30px rgba(139, 92, 246, 0.08);
-}
-.feature-card[data-accent="faculty"]:hover {
-  box-shadow: 0 24px 48px rgba(0,0,0,0.5), 0 0 30px rgba(6, 182, 212, 0.08);
-}
-.feature-card[data-accent="facilities"]:hover {
-  box-shadow: 0 24px 48px rgba(0,0,0,0.5), 0 0 30px rgba(245, 158, 11, 0.08);
-}
-.feature-card[data-accent="student"]:hover {
-  box-shadow: 0 24px 48px rgba(0,0,0,0.5), 0 0 30px rgba(236, 72, 153, 0.08);
-}
-
-.feature-card[data-accent="admin"]:hover::before { background: linear-gradient(135deg, var(--cg-accent-admin), rgba(139, 92, 246, 0.1)); }
-.feature-card[data-accent="faculty"]:hover::before { background: linear-gradient(135deg, var(--cg-accent-faculty), rgba(6, 182, 212, 0.1)); }
-.feature-card[data-accent="facilities"]:hover::before { background: linear-gradient(135deg, var(--cg-accent-facilities), rgba(245, 158, 11, 0.1)); }
-.feature-card[data-accent="student"]:hover::before { background: linear-gradient(135deg, var(--cg-accent-student), rgba(236, 72, 153, 0.1)); }
-
-.feature-card .icon {
-  font-size: 32px;
-  margin-bottom: 24px;
-  display: inline-block;
-  opacity: 0.85;
-}
-
-.feature-card h3 {
-  font-size: 19px;
-  font-weight: 700;
-  margin: 0 0 12px 0;
-  color: var(--cg-white);
-  letter-spacing: -0.3px;
-  text-transform: uppercase;
-}
-
-.feature-card p {
+.showcase-bullet-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   font-size: 13.5px;
   color: var(--cg-light-gray);
-  line-height: 1.6;
-  margin: 0;
+}
+
+.showcase-bullet-item i {
+  font-style: normal;
+  font-weight: bold;
+}
+
+.showcase-bullet-item.admin i { color: var(--cg-accent-admin); }
+.showcase-bullet-item.faculty i { color: var(--cg-accent-faculty); }
+.showcase-bullet-item.facilities i { color: var(--cg-accent-facilities); }
+.showcase-bullet-item.student i { color: var(--cg-accent-student); }
+.showcase-bullet-item.bulk i { color: #f43f5e; }
+
+.showcase-bullet-item strong {
+  color: var(--cg-white);
+}
+
+.showcase-visual {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  width: 100%;
 }
 
 /* Premium Cinematic Footer */
