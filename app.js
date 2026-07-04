@@ -6407,9 +6407,9 @@ async function checkUniversityRegistration() {
       }
     } else {
       state.university = {
-        name: "University of Bharat",
-        shortName: "UNIVERSITY",
-        code: "CG",
+        name: "KampusGrid",
+        shortName: "KAMPUSGRID",
+        code: "KG",
         customerId: "CUST-DEMO77"
       };
     }
@@ -6421,13 +6421,13 @@ async function checkUniversityRegistration() {
 
 function applyDynamicBranding(uniData) {
   if (!uniData) return;
-  // Landing page header always shows the product brand name (CAMPUSGRID), not the customer university name.
+  // Landing page header always shows the product brand name (KAMPUSGRID), not the customer university name.
 
   const sidebarUniName = document.getElementById("sidebarUniName");
   if (sidebarUniName) sidebarUniName.innerText = (uniData.shortName || "UNIVERSITY").toUpperCase();
 
   const loginBrandMark = document.getElementById("loginBrandMark");
-  if (loginBrandMark) loginBrandMark.innerText = (uniData.code || "CG").toUpperCase();
+  if (loginBrandMark) loginBrandMark.innerText = (uniData.code || "KG").toUpperCase();
 
   const customerIdBadge = document.getElementById("settingsCustomerIdBadge");
   if (customerIdBadge) {
